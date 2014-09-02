@@ -141,6 +141,7 @@ SHARED_LIBRARIES 	= $(TK_DLL_FILE) $(TK_STUB_LIB_FILE)
 STATIC_LIBRARIES	= $(TK_LIB_FILE)
 
 WISH			= wish$(VER)${EXESUFFIX}
+TKKIT			= tkkit$(VER)${EXESUFFIX}
 TKTEST			= tktest${EXEEXT}
 CAT32			= cat32$(EXEEXT)
 MAN2TCL			= man2tcl$(EXEEXT)
@@ -615,6 +616,15 @@ $(WISH): $(WISH_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES)
 	$(TK_STUB_LIB_FILE) $(TCL_LIB_FILE) $(LIBS) \
 	wish.$(RES) $(CC_EXENAME) $(LDFLAGS_WINDOW)
 	@VC_MANIFEST_EMBED_EXE@
+
+tkkit: $(TKKIT)
+
+$(TKKIT): $(WISH)
+	rm -rf tkkit.zip tkkit.vfs
+	PWD=`pwd`
+	cd ${prefix}/lib ; zip -rAq ${PWD}/tkkit.zip tcl8 tcl8.6 tk8.6
+	cp -f $(WISH) $(TKKIT)
+	cat tkkit.zip >> $(TKKIT)
 
 tktest: $(TKTEST)
 

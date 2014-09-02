@@ -210,6 +210,7 @@ BUILD_TCLSH		= @BUILD_TCLSH@
 EXE_SUFFIX		= @EXEEXT@
 TCL_EXE			= @TCLSH_PROG@
 WISH_EXE		= wish${EXE_SUFFIX}
+TKKIT_EXE		= tkkit${EXE_SUFFIX}
 TKTEST_EXE		= tktest${EXE_SUFFIX}
 
 # Tk used to let the configure script choose which program to use
@@ -617,6 +618,13 @@ objs: ${OBJS}
 ${WISH_EXE}: $(TK_STUB_LIB_FILE) $(WISH_OBJS) $(TK_LIB_FILE) @APP_RSRC_FILE@
 	${CC} ${CFLAGS} ${LDFLAGS} $(WISH_OBJS) @TK_BUILD_LIB_SPEC@ \
 		$(WISH_LIBS) $(CC_SEARCH_FLAGS) -o ${WISH_EXE}
+
+${TKKIT_EXE}: ${WISH_EXE}
+	rm -f tkkit.zip
+	PWD=`pwd`
+	cd ${prefix}/lib ; zip -rAq ${PWD}/tkkit.zip tcl8 tcl8.6 tk8.6
+	cp -f ${WISH_EXE} ${TKKIT_EXE}
+	cat tkkit.zip >> ${TKKIT_EXE}
 
 # Resetting the LIB_RUNTIME_DIR below is required so that
 # the generated tktest executable gets the build directory
