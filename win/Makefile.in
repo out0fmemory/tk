@@ -619,12 +619,15 @@ $(WISH): $(WISH_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES)
 
 tkkit: $(TKKIT)
 
-$(TKKIT): $(WISH)
-	rm -rf tkkit.zip tkkit.vfs
+null.zip:
+	touch .empty
+	zip null.zip .empty
+	
+$(TKKIT): $(WISH) null.zip
 	PWD=`pwd`
-	cd ${prefix}/lib ; zip -rAq ${PWD}/tkkit.zip tcl8 tcl8.6 tk8.6
 	cp -f $(WISH) $(TKKIT)
-	cat tkkit.zip >> $(TKKIT)
+	cat null.zip >> $(TKKIT)
+	cd ${prefix}/lib ; zip -rAq ${PWD}/$(TKKIT) tcl8 tcl8.6 tk8.6
 
 tktest: $(TKTEST)
 
