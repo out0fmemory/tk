@@ -238,6 +238,9 @@ INSTALL_DATA	= ${INSTALL}
 WISH_OBJS = \
 	winMain.$(OBJEXT)
 
+TKKIT_OBJS = \
+	tkKitMain.$(OBJEXT)
+
 TKTEST_OBJS = \
 	tkSquare.$(OBJEXT) \
 	tkTest.$(OBJEXT) \
@@ -622,10 +625,13 @@ tkkit: $(TKKIT)
 null.zip:
 	touch .empty
 	zip null.zip .empty
-	
-$(TKKIT): $(WISH) null.zip
+
+$(TKKIT): $(TKKIT_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES) null.zip
+	$(CC) $(CFLAGS) $(TKKIT_OBJS) $(TK_LIB_FILE) \
+	$(TK_STUB_LIB_FILE) $(TCL_LIB_FILE) $(LIBS) \
+	wish.$(RES) $(CC_EXENAME) $(LDFLAGS_WINDOW)
+	@VC_MANIFEST_EMBED_EXE@
 	PWD=`pwd`
-	cp -f $(WISH) $(TKKIT)
 	cat null.zip >> $(TKKIT)
 	cd ${prefix}/lib ; zip -rAq ${PWD}/$(TKKIT) tcl8 tcl8.6 tk8.6
 
@@ -689,6 +695,9 @@ tkSquare.$(OBJEXT): tkSquare.c
 
 tkMain2.$(OBJEXT): tkMain.c
 	$(CC) -c $(CC_SWITCHES) -DBUILD_tk -DTK_ASCII_MAIN @DEPARG@ $(CC_OBJNAME)
+
+tkKitMain.$(OBJEXT): winMain.c
+	$(CC) -c $(CC_SWITCHES) -DTCL_KIT @DEPARG@ $(CC_OBJNAME)
 
 # Extra dependency info
 tkConsole.$(OBJEXT): configure Makefile

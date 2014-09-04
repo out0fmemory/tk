@@ -13,7 +13,6 @@
  */
 
 #include "tk.h"
-#include "tclInt.h"
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #undef WIN32_LEAN_AND_MEAN
@@ -33,7 +32,6 @@ extern Tcl_PackageInitProc Tktest_Init;
 extern Tcl_PackageInitProc Registry_Init;
 extern Tcl_PackageInitProc Dde_Init;
 extern Tcl_PackageInitProc Dde_SafeInit;
-extern Tcl_PackageInitProc Tcl_Zvfs_Init;
 #endif
 
 #ifdef TCL_BROKEN_MAINARGS
@@ -148,7 +146,6 @@ _tWinMain(
 #ifdef TK_LOCAL_MAIN_HOOK
     TK_LOCAL_MAIN_HOOK(&argc, &argv);
 #endif
-
     Tk_Main(argc, argv, TK_LOCAL_APPINIT);
     return 0;			/* Needed only to prevent compiler warning. */
 }
@@ -176,8 +173,9 @@ int
 Tcl_AppInit(
     Tcl_Interp *interp)		/* Interpreter for application. */
 {
+#if defined TCL_KIT
     Tcl_Zvfs_Boot(interp);
-    
+#endif
     if ((Tcl_Init)(interp) == TCL_ERROR) {
 	return TCL_ERROR;
     }
