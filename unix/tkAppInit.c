@@ -15,7 +15,7 @@
 #undef BUILD_tk
 #undef STATIC_BUILD
 #include "tk.h"
-#include "tclInt.h"
+
 #ifdef TK_TEST
 extern Tcl_PackageInitProc Tktest_Init;
 #endif /* TK_TEST */
@@ -74,7 +74,11 @@ main(
 #ifdef TK_LOCAL_MAIN_HOOK
     TK_LOCAL_MAIN_HOOK(&argc, &argv);
 #endif
-
+#ifdef TCL_KIT
+    /* This voodoo ensures that Tcl_Main does not eat the first argument */
+    Tcl_FindExecutable(argv[0]);
+    Tcl_SetStartupScript(Tcl_NewStringObj("/zvfs/main.tcl",-1),NULL);
+#endif
     Tk_Main(argc, argv, TK_LOCAL_APPINIT);
     return 0;			/* Needed only to prevent compiler warning. */
 }
@@ -102,7 +106,9 @@ int
 Tcl_AppInit(
     Tcl_Interp *interp)		/* Interpreter for application. */
 {
+#ifdef TCL_KIT
     Tcl_Zvfs_Boot(interp);
+#endif
 
     if ((Tcl_Init)(interp) == TCL_ERROR) {
 	return TCL_ERROR;

@@ -623,9 +623,13 @@ null.zip:
 	touch .empty
 	zip null.zip .empty
 	
-${TKKIT_EXE}: ${WISH_EXE} null.zip
+${TKKIT_EXE}:  $(TK_STUB_LIB_FILE) $(TK_LIB_FILE) @APP_RSRC_FILE@ null.zip
+	rm -f tkKitInit.o
+	$(CC) -c $(APP_CC_SWITCHES) \
+		-DTCL_KIT $(UNIX_DIR)/tkAppInit.c -o tkKitInit.o
+	${CC} ${CFLAGS} ${LDFLAGS} tkKitInit.o @TK_BUILD_LIB_SPEC@ \
+		$(WISH_LIBS) $(CC_SEARCH_FLAGS) -o ${TKKIT_EXE}
 	PWD=`pwd`
-	cp -f ${WISH_EXE} ${TKKIT_EXE}
 	cat null.zip >> ${TKKIT_EXE}
 	cd ${prefix}/lib ; zip -rAq ${PWD}/${TKKIT_EXE} tcl8 tcl8.6 tk8.6
 
