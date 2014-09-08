@@ -107,7 +107,7 @@ Tcl_AppInit(
     Tcl_Interp *interp)		/* Interpreter for application. */
 {
 #ifdef TCL_KIT
-    Tcl_Zvfs_Boot(interp);
+    Tcl_Zvfs_Boot(interp,"/zvfs","main.tcl");
 #endif
 
     if ((Tcl_Init)(interp) == TCL_ERROR) {
