@@ -32,6 +32,10 @@ extern Tcl_PackageInitProc Tktest_Init;
 #ifndef MODULE_SCOPE
 #   define MODULE_SCOPE extern
 #endif
+#ifdef TCL_ZIPVFS
+  MODULE_SCOPE int Tcl_Zvfs_Boot(const char *,const char *,const char *);
+  MODULE_SCOPE int TclZvfsInit(Tcl_Interp *);
+#endif /* TCL_ZIPVFS */
 MODULE_SCOPE int TK_LOCAL_APPINIT(Tcl_Interp *);
 MODULE_SCOPE int main(int, char **);
 
@@ -74,10 +78,12 @@ main(
 #ifdef TK_LOCAL_MAIN_HOOK
     TK_LOCAL_MAIN_HOOK(&argc, &argv);
 #endif
-#ifdef TCL_KIT
-    /* This voodoo ensures that Tcl_Main does not eat the first argument */
+#ifdef TCL_ZIPVFS
+    #define TCLKIT_INIT     "main.tcl"
+    #define TCLKIT_VFSMOUNT "/zvfs"
     Tcl_FindExecutable(argv[0]);
-    Tcl_SetStartupScript(Tcl_NewStringObj("/zvfs/main.tcl",-1),NULL);
+    CONST char *cp=Tcl_GetNameOfExecutable();
+    Tcl_Zvfs_Boot(cp,TCLKIT_VFSMOUNT,TCLKIT_INIT);
 #endif
     Tk_Main(argc, argv, TK_LOCAL_APPINIT);
     return 0;			/* Needed only to prevent compiler warning. */
@@ -106,10 +112,6 @@ int
 Tcl_AppInit(
     Tcl_Interp *interp)		/* Interpreter for application. */
 {
-#ifdef TCL_KIT
-    Tcl_Zvfs_Boot(interp,"/zvfs","main.tcl");
-#endif
-
     if ((Tcl_Init)(interp) == TCL_ERROR) {
 	return TCL_ERROR;
     }
@@ -119,6 +121,12 @@ Tcl_AppInit(
     }
     Tcl_StaticPackage(interp, "Tk", Tk_Init, Tk_SafeInit);
 
+#ifdef TCL_ZIPVFS
+    /* Load the ZipVfs package */
+    if (TclZvfsInit(interp) == TCL_ERROR) {
+	return TCL_ERROR;
+    }
+#endif
 #ifdef TK_TEST
     if (Tktest_Init(interp) == TCL_ERROR) {
 	return TCL_ERROR;

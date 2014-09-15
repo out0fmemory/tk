@@ -106,6 +106,8 @@ TCL_GENERIC_DIR		= @TCL_SRC_DIR@/generic
 # appropriate for this version of Tk:
 TCL_PLATFORM_DIR	= @TCL_SRC_DIR@/unix
 
+TCL_SRC_DIR		= @TCL_SRC_DIR@
+
 # The directory containing the Tcl library archive file appropriate
 # for this version of Tk:
 TCL_BIN_DIR		= @TCL_BIN_DIR@
@@ -210,8 +212,15 @@ BUILD_TCLSH		= @BUILD_TCLSH@
 EXE_SUFFIX		= @EXEEXT@
 TCL_EXE			= @TCLSH_PROG@
 WISH_EXE		= wish${EXE_SUFFIX}
-TKKIT_EXE		= tkkit${EXE_SUFFIX}
+ifeq ($(TK_SHARED_BUILD),0)
+TKKIT_BASE		= tkkits
+else
+TKKIT_BASE		= tkkitd
+endif
+TKKIT_EXE		= ${TKKIT_BASE}${EXE_SUFFIX}
+
 TKTEST_EXE		= tktest${EXE_SUFFIX}
+
 
 # Tk used to let the configure script choose which program to use
 # for installing, but there are just too many different versions of
@@ -265,6 +274,8 @@ TCL_STUB_FLAGS		= @TCL_STUB_FLAGS@
 # configure script.
 LIBS = @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@
 WISH_LIBS = $(TCL_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
+TKKIT_LIBS = $(TCL_KIT_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
+
 
 # The symbols below provide support for dynamic loading and shared
 # libraries.  See configure.in for a description of what the
@@ -345,6 +356,9 @@ ${KEYSYM_FLAGS} @EXTRA_CC_SWITCHES@
 
 WISH_OBJS = tkAppInit.o
 
+TKKIT_OBJS = tkKitInit.o tclZipVfs.o
+
+
 TKTEST_OBJS = tkTestInit.o tkTest.o tkSquare.o tkOldTest.o \
 	$(@TK_WINDOWINGSYSTEM@_TKTEST_OBJS)
 
@@ -406,6 +420,8 @@ AQUA_OBJS = tkMacOSXBitmap.o tkMacOSXButton.o tkMacOSXClipboard.o \
 	ttkMacOSXTheme.o
 
 AQUA_TKTEST_OBJS = tkMacOSXTest.o
+
+KIT_STATIC_OBJS = tkOldTest.o tkSquare.o tkTest.o tkWindow.o ttkStubLib.o tkWinTest.o tkWinWm.o tkConsole.o
 
 OBJS =  $(GENERIC_OBJS) $(WIDG_OBJS) $(CANV_OBJS) $(IMAGE_OBJS) $(TEXT_OBJS) \
 	$(STUB_OBJS) $(TTK_OBJS) \
@@ -594,6 +610,9 @@ ${STUB_LIB_FILE}: ${STUB_LIB_OBJS}
 	rm -f $@
 	@MAKE_STUB_LIB@
 
+clear-stubs-objs:
+	rm -f $(KIT_STATIC_OBJS)
+
 # Build Aqua resource files
 ${TK_RSRC_FILE}: $(AQUA_RESOURCES)
 	rm -f $@
@@ -622,16 +641,25 @@ ${WISH_EXE}: $(TK_STUB_LIB_FILE) $(WISH_OBJS) $(TK_LIB_FILE) @APP_RSRC_FILE@
 null.zip:
 	touch .empty
 	zip null.zip .empty
-	
-${TKKIT_EXE}:  $(TK_STUB_LIB_FILE) $(TK_LIB_FILE) @APP_RSRC_FILE@ null.zip
-	rm -f tkKitInit.o
-	$(CC) -c $(APP_CC_SWITCHES) \
-		-DTCL_KIT $(UNIX_DIR)/tkAppInit.c -o tkKitInit.o
-	${CC} ${CFLAGS} ${LDFLAGS} tkKitInit.o @TK_BUILD_LIB_SPEC@ \
+
+# Rather than force an install, pack the files we need into a
+# file system under our control
+tkkit.vfs:
+	@echo "Building VFS File system in tclkit.vfs"
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
+	    "$(UNIX_DIR)/tkkit.vfs/tcl$(VERSION)" "$(TCL_SRC_DIR)"  unix
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
+	    "$(UNIX_DIR)/tkkit.vfs/tk$(VERSION)" "$(TOP_DIR)"  unix	
+
+tkkit: ${TKKIT_EXE}
+
+${TKKIT_EXE}: $(TK_STUB_LIB_FILE) $(TKKIT_OBJS) $(TK_LIB_FILE) @APP_RSRC_FILE@ tkkit.vfs null.zip
+	${CC} ${CFLAGS} ${LDFLAGS} $(TKKIT_OBJS) @TK_BUILD_LIB_SPEC@ \
 		$(WISH_LIBS) $(CC_SEARCH_FLAGS) -o ${TKKIT_EXE}
 	PWD=`pwd`
 	cat null.zip >> ${TKKIT_EXE}
-	cd ${prefix}/lib ; zip -rAq ${PWD}/${TKKIT_EXE} tcl8 tcl8.6 tk8.6
+	cd tkkit.vfs ; zip -rAq ${PWD}/${TKKIT_EXE} .
+
 
 # Resetting the LIB_RUNTIME_DIR below is required so that
 # the generated tktest executable gets the build directory
@@ -949,6 +977,14 @@ tkTestInit.o: $(UNIX_DIR)/tkAppInit.c ${WISH_EXE}
 
 tkAppInit.o: $(UNIX_DIR)/tkAppInit.c
 	$(CC) -c $(APP_CC_SWITCHES) $(UNIX_DIR)/tkAppInit.c
+
+tkKitInit.o: $(UNIX_DIR)/tkAppInit.c
+	$(CC) -c $(APP_CC_SWITCHES) -DTCL_ZIPVFS $(UNIX_DIR)/tkAppInit.c -o tkKitInit.o
+
+
+tclZipVfs.o: $(TCL_SRC_DIR)/generic/tclZipVfs.c
+	$(CC) -c $(CC_SWITCHES) $(TCL_SRC_DIR)/generic/tclZipVfs.c
+
 
 tk3d.o: $(GENERIC_DIR)/tk3d.c
 	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/tk3d.c
@@ -1719,6 +1755,6 @@ BUILD_HTML = \
 .PHONY: clean distclean depend genstubs checkstubs checkexports checkuchar
 .PHONY: shell gdb valgrind valgrindshell dist alldist rpm
 .PHONY: tkLibObjs tktest-real test-classic test-ttk testlang
-.PHONY: demo install-demos
+.PHONY: demo install-demos tkkit
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
