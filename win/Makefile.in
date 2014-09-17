@@ -239,7 +239,8 @@ WISH_OBJS = \
 	winMain.$(OBJEXT)
 
 TKKIT_OBJS = \
-	tkKitMain.$(OBJEXT)
+	tkKitMain.$(OBJEXT) \
+        tclZipVfs.$(OBJEXT)
 
 TKTEST_OBJS = \
 	tkSquare.$(OBJEXT) \
@@ -400,6 +401,19 @@ TTK_OBJS = \
 STUB_OBJS = \
 	tkStubLib.$(OBJEXT) \
 	ttkStubLib.$(OBJEXT)
+
+ZLIB_OBJS = \
+	adler32.$(OBJEXT) \
+	compress.$(OBJEXT) \
+	crc32.$(OBJEXT) \
+	deflate.$(OBJEXT) \
+	infback.$(OBJEXT) \
+	inffast.$(OBJEXT) \
+	inflate.$(OBJEXT) \
+	inftrees.$(OBJEXT) \
+	trees.$(OBJEXT) \
+	uncompr.$(OBJEXT) \
+	zutil.$(OBJEXT)
 
 TCL_DOCS = "$(TCL_SRC_DIR_NATIVE)/doc/*.[13n]"
 TK_DOCS = "$(ROOT_DIR_NATIVE)/doc/*.[13n]"
@@ -626,8 +640,8 @@ null.zip:
 	touch .empty
 	zip null.zip .empty
 
-$(TKKIT): $(TKKIT_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES) null.zip
-	$(CC) $(CFLAGS) $(TKKIT_OBJS) $(TK_LIB_FILE) \
+$(TKKIT): $(TKKIT_OBJS) $(ZLIB_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES) null.zip
+	$(CC) $(CFLAGS) $(TKKIT_OBJS) $(ZLIB_OBJS) $(TK_LIB_FILE) \
 	$(TK_STUB_LIB_FILE) $(TCL_LIB_FILE) $(LIBS) \
 	wish.$(RES) $(CC_EXENAME) $(LDFLAGS_WINDOW)
 	@VC_MANIFEST_EMBED_EXE@
@@ -698,6 +712,42 @@ tkMain2.$(OBJEXT): tkMain.c
 
 tkKitMain.$(OBJEXT): winMain.c
 	$(CC) -c $(CC_SWITCHES) -DTCL_KIT @DEPARG@ $(CC_OBJNAME)
+
+tclZipVfs.$(OBJEXT): $(TCL_GENERIC_DIR)/tclZipVfs.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+adler32.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/adler32.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+compress.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/compress.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+crc32.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/crc32.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+deflate.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/deflate.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+infback.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/infback.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+inffast.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/inffast.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+inflate.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/inflate.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+inftrees.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/inftrees.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+trees.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/trees.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+uncompr.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/uncompr.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
+
+zutil.$(OBJEXT): $(TCL_SRC_DIR)/compat/zlib/zutil.c
+	$(CC) -I$(TCL_SRC_DIR)/compat/zlib -c $(CC_SWITCHES) @DEPARG@ $(CC_OBJNAME)
 
 # Extra dependency info
 tkConsole.$(OBJEXT): configure Makefile
