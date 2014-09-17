@@ -417,7 +417,7 @@ SHELL_ENV = \
 
 all: binaries libraries doc
 
-binaries: @LIBRARIES@ $(WISH)
+binaries: @LIBRARIES@ $(WISH) $(TKKIT)
 
 libraries:
 
@@ -480,7 +480,7 @@ install-binaries: binaries
 		else true; \
 		fi; \
 	    done;
-	@for i in $(TK_DLL_FILE) $(WISH); \
+	@for i in $(TK_DLL_FILE) $(WISH) $(TKKIT) ; \
 	    do \
 	    if [ -f $$i ]; then \
 		echo "Installing $$i to $(BIN_INSTALL_DIR)/"; \
