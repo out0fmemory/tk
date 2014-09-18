@@ -431,7 +431,7 @@ SHELL_ENV = \
 
 all: binaries libraries doc
 
-binaries: @LIBRARIES@ $(WISH) $(TKKIT)
+binaries: @LIBRARIES@ $(WISH)
 
 libraries:
 
@@ -639,6 +639,13 @@ tkkit: $(TKKIT)
 null.zip:
 	touch .empty
 	zip null.zip .empty
+        
+tkkit.vfs:  $(TK_STUB_LIB_FILE)
+	@echo "Building VFS File system in tclkit.vfs"
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
+	    "$(WIN_DIR)/tkkit.vfs/tcl$(VERSION)" "$(TCL_SRC_DIR)" windows
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
+	    "$(WIN_DIR)/tkkit.vfs/tk$(VERSION)" "$(ROOT_DIR)" windows
 
 $(TKKIT): $(TKKIT_OBJS) $(ZLIB_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES) null.zip
 	$(CC) $(CFLAGS) $(TKKIT_OBJS) $(ZLIB_OBJS) $(TK_LIB_FILE) \
@@ -647,7 +654,7 @@ $(TKKIT): $(TKKIT_OBJS) $(ZLIB_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES)
 	@VC_MANIFEST_EMBED_EXE@
 	PWD=`pwd`
 	cat null.zip >> $(TKKIT)
-	cd ${prefix}/lib ; zip -rAq ${PWD}/$(TKKIT) tcl8 tcl8.6 tk8.6
+	cd tkkit.vfs ; zip -rAq $(WIN_DIR)/$(TKKIT) .
 
 tktest: $(TKTEST)
 
