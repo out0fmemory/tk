@@ -141,6 +141,7 @@ SHARED_LIBRARIES 	= $(TK_DLL_FILE) $(TK_STUB_LIB_FILE)
 STATIC_LIBRARIES	= $(TK_LIB_FILE)
 
 WISH			= wish$(VER)${EXESUFFIX}
+TCLKIT			= tclkit$(VER)s${EXEEXT}
 TKKIT			= tkkit$(VER)${EXESUFFIX}
 TKTEST			= tktest${EXEEXT}
 CAT32			= cat32$(EXEEXT)
@@ -640,21 +641,28 @@ null.zip:
 	touch .empty
 	zip null.zip .empty
         
-tkkit.vfs:  $(TK_STUB_LIB_FILE)
+tkkit.vfs:  ${TK_DLL_FILE}
 	@echo "Building VFS File system in tclkit.vfs"
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
-	    "$(WIN_DIR)/tkkit.vfs/tcl$(VERSION)" "$(TCL_SRC_DIR)" windows
+	    "$(WIN_DIR)/tkkit.vfs/tk$(VERSION)" "$(TCL_SRC_DIR)" windows
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
 	    "$(WIN_DIR)/tkkit.vfs/tk$(VERSION)" "$(ROOT_DIR)" windows
+	mkdir -p $(WIN_DIR)/tkkit.vfs/tcl$(VERSION)
+	mkdir -p $(WIN_DIR)/tkkit.vfs/bin
+	cp $(TCL_SRC_DIR)/win/tclkit.vfs/tcl$(VERSION)/init.tcl $(WIN_DIR)/tkkit.vfs/tcl$(VERSION)/init.tcl
+	cp $(TK_DLL_FILE) tkkit.vfs/bin/$(TK_DLL_FILE)
+	chmod a+rw $(WIN_DIR)/tkkit.vfs/tcl$(VERSION)/init.tcl
+	echo "lappend auto_path /zvfs/tk$(VERSION)" >> $(WIN_DIR)/tkkit.vfs/tcl$(VERSION)/init.tcl
+	echo "package ifneeded Tk $(VERSION)$(PATCH_LEVEL) [list load "/zvfs/bin/${TK_DLL_FILE}" Tk]" >> $(WIN_DIR)/tkkit.vfs/tcl$(VERSION)/init.tcl
+        
+$(TCLKIT):
+	make -C $(TCL_SRC_DIR)/win tclkit
+	cp $(TCL_SRC_DIR)/win/$(TCLKIT) $(TCLKIT) 
 
-$(TKKIT): $(TKKIT_OBJS) $(ZLIB_OBJS) @LIBRARIES@ $(TK_STUB_LIB_FILE) wish.$(RES) null.zip
-	$(CC) $(CFLAGS) $(TKKIT_OBJS) $(ZLIB_OBJS) $(TK_LIB_FILE) \
-	$(TK_STUB_LIB_FILE) $(TCL_LIB_FILE) $(LIBS) \
-	wish.$(RES) $(CC_EXENAME) $(LDFLAGS_WINDOW)
-	@VC_MANIFEST_EMBED_EXE@
+$(TKKIT): $(TCLKIT) tkkit.vfs null.zip
 	PWD=`pwd`
-	cat null.zip >> $(TKKIT)
-	cd tkkit.vfs ; zip -rAq $(WIN_DIR)/$(TKKIT) .
+	cp $(TCLKIT) $(TKKIT)
+	cd tkkit.vfs ; zip -rAq $(PWD)/$(TKKIT) .
 
 tktest: $(TKTEST)
 
