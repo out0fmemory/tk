@@ -213,11 +213,11 @@ EXE_SUFFIX		= @EXEEXT@
 TCL_EXE			= @TCLSH_PROG@
 WISH_EXE		= wish${EXE_SUFFIX}
 ifeq ($(TK_SHARED_BUILD),0)
-TKKIT_BASE		= tkkits
+TKZSH_BASE		= tkzshs
 else
-TKKIT_BASE		= tkkitd
+TKZSH_BASE		= tkzshd
 endif
-TKKIT_EXE		= ${TKKIT_BASE}${EXE_SUFFIX}
+TKZSH_EXE		= ${TKZSH_BASE}${EXE_SUFFIX}
 
 TKTEST_EXE		= tktest${EXE_SUFFIX}
 
@@ -274,7 +274,7 @@ TCL_STUB_FLAGS		= @TCL_STUB_FLAGS@
 # configure script.
 LIBS = @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@
 WISH_LIBS = $(TCL_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
-TKKIT_LIBS = $(TCL_KIT_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
+TKZSH_LIBS = $(TCL_KIT_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
 
 
 # The symbols below provide support for dynamic loading and shared
@@ -356,7 +356,7 @@ ${KEYSYM_FLAGS} @EXTRA_CC_SWITCHES@
 
 WISH_OBJS = tkAppInit.o
 
-TKKIT_OBJS = tkKitInit.o tclZipVfs.o
+TKZSH_OBJS = tkKitInit.o tclZipVfs.o tclZipVfsBoot.o
 
 
 TKTEST_OBJS = tkTestInit.o tkTest.o tkSquare.o tkOldTest.o \
@@ -644,21 +644,23 @@ null.zip:
 
 # Rather than force an install, pack the files we need into a
 # file system under our control
-tkkit.vfs:
+tkzsh.vfs: ${LIB_FILE}
 	@echo "Building VFS File system in tclkit.vfs"
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
-	    "$(UNIX_DIR)/tkkit.vfs/tcl$(VERSION)" "$(TCL_SRC_DIR)"  unix
+	    "$(UNIX_DIR)/tkzsh.vfs/boot/tcl" "$(TCL_SRC_DIR)"  unix
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
-	    "$(UNIX_DIR)/tkkit.vfs/tk$(VERSION)" "$(TOP_DIR)"  unix	
+	    "$(UNIX_DIR)/tkzsh.vfs/boot/tk" "$(TOP_DIR)"  unix	$(TK_LIB_FILE) ${VERSION}${PATCH_LEVEL}
 
-tkkit: ${TKKIT_EXE}
+$(TCL_SRC_DIR)/unix/tclzshd_bare:
+	make -C $(TCL_SRC_DIR)/unix tclzshd_bare
+	
 
-${TKKIT_EXE}: $(TK_STUB_LIB_FILE) $(TKKIT_OBJS) $(TK_LIB_FILE) @APP_RSRC_FILE@ tkkit.vfs null.zip
-	${CC} ${CFLAGS} ${LDFLAGS} $(TKKIT_OBJS) @TK_BUILD_LIB_SPEC@ \
-		$(WISH_LIBS) $(CC_SEARCH_FLAGS) -o ${TKKIT_EXE}
-	PWD=`pwd`
-	cat null.zip >> ${TKKIT_EXE}
-	cd tkkit.vfs ; zip -rAq ${PWD}/${TKKIT_EXE} .
+# Builds an executable linked to the Tcl dynamic library
+tkzshd: $(TCL_SRC_DIR)/unix/tclzshd_bare tkzsh.vfs
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkzip.tcl" ${TKZSH_EXE} \
+		-runtime $(TCL_SRC_DIR)/unix/tclzshd_bare \
+		-directory tkzsh.vfs
+	chmod a+x ${TKZSH_EXE}	
 
 
 # Resetting the LIB_RUNTIME_DIR below is required so that
@@ -795,9 +797,9 @@ install-binaries: $(TK_STUB_LIB_FILE) $(TK_LIB_FILE) ${WISH_EXE}
 	fi
 	@echo "Installing ${WISH_EXE} as $(BIN_INSTALL_DIR)/wish$(VERSION)${EXE_SUFFIX}"
 	@$(INSTALL_PROGRAM) ${WISH_EXE} "$(BIN_INSTALL_DIR)/wish$(VERSION)${EXE_SUFFIX}"
-	@if test -f "${TKKIT_EXE}"; then \
-		@echo "Installing ${TKKIT_EXE} as $(BIN_INSTALL_DIR)/${TKKIT_BASE}$(VERSION)${EXE_SUFFIX}" ; \
-		@$(INSTALL_PROGRAM) ${TKKIT_EXE} "$(BIN_INSTALL_DIR)/${TKKIT_BASE}$(VERSION)${EXE_SUFFIX}" ; \
+	@if test -f "${TKZSH_EXE}"; then \
+		@echo "Installing ${TKZSH_EXE} as $(BIN_INSTALL_DIR)/${TKZSH_BASE}$(VERSION)${EXE_SUFFIX}" ; \
+		@$(INSTALL_PROGRAM) ${TKZSH_EXE} "$(BIN_INSTALL_DIR)/${TKZSH_BASE}$(VERSION)${EXE_SUFFIX}" ; \
 	fi
 	@echo "Installing tkConfig.sh to $(CONFIG_INSTALL_DIR)/"
 	@$(INSTALL_DATA) tkConfig.sh "$(CONFIG_INSTALL_DIR)/tkConfig.sh"
@@ -949,6 +951,7 @@ Makefile: $(UNIX_DIR)/Makefile.in
 #	$(SHELL) config.status
 
 clean:
+	rm -rf tkzsh.vfs
 	rm -f *.a *.o libtk* core errs *~ \#* TAGS *.E a.out \
 		errors ${WISH_EXE} $(TKTEST_EXE) lib.exp Tk *.rsrc
 
@@ -989,7 +992,9 @@ tkKitInit.o: $(UNIX_DIR)/tkAppInit.c
 tclZipVfs.o: $(TCL_SRC_DIR)/generic/tclZipVfs.c
 	$(CC) -c $(CC_SWITCHES) $(TCL_SRC_DIR)/generic/tclZipVfs.c
 
-
+tclZipVfsBoot.o:   $(TCL_SRC_DIR)/generic/tclZipVfsBoot.c
+	$(CC) -c $(CC_SWITCHES)  $(TCL_SRC_DIR)/generic/tclZipVfsBoot.c
+	
 tk3d.o: $(GENERIC_DIR)/tk3d.c
 	$(CC) -c $(CC_SWITCHES) $(GENERIC_DIR)/tk3d.c
 
@@ -1759,6 +1764,6 @@ BUILD_HTML = \
 .PHONY: clean distclean depend genstubs checkstubs checkexports checkuchar
 .PHONY: shell gdb valgrind valgrindshell dist alldist rpm
 .PHONY: tkLibObjs tktest-real test-classic test-ttk testlang
-.PHONY: demo install-demos tkkit
+.PHONY: demo install-demos tkzsh
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
