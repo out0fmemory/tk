@@ -212,13 +212,7 @@ BUILD_TCLSH		= @BUILD_TCLSH@
 EXE_SUFFIX		= @EXEEXT@
 TCL_EXE			= @TCLSH_PROG@
 WISH_EXE		= wish${EXE_SUFFIX}
-ifeq ($(TK_SHARED_BUILD),0)
-TKZSH_BASE		= tkzshs
-else
-TKZSH_BASE		= tkzshd
-endif
-TKZSH_EXE		= ${TKZSH_BASE}${EXE_SUFFIX}
-
+TKKIT_EXE		= tkkit${EXE_SUFFIX}
 TKTEST_EXE		= tktest${EXE_SUFFIX}
 
 
@@ -274,8 +268,6 @@ TCL_STUB_FLAGS		= @TCL_STUB_FLAGS@
 # configure script.
 LIBS = @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@
 WISH_LIBS = $(TCL_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
-TKZSH_LIBS = $(TCL_KIT_LIB_SPEC) @LIBS@ $(X11_LIB_SWITCHES) @TCL_LIBS@ @EXTRA_WISH_LIBS@
-
 
 # The symbols below provide support for dynamic loading and shared
 # libraries.  See configure.in for a description of what the
@@ -355,9 +347,6 @@ ${AC_FLAGS} ${PROTO_FLAGS} ${SECURITY_FLAGS} ${MEM_DEBUG_FLAGS} \
 ${KEYSYM_FLAGS} @EXTRA_CC_SWITCHES@
 
 WISH_OBJS = tkAppInit.o
-
-TKZSH_OBJS = tkKitInit.o tclZipVfs.o tclZipVfsBoot.o
-
 
 TKTEST_OBJS = tkTestInit.o tkTest.o tkSquare.o tkOldTest.o \
 	$(@TK_WINDOWINGSYSTEM@_TKTEST_OBJS)
@@ -587,7 +576,7 @@ SHELL_ENV = \
 
 all: binaries libraries doc
 
-binaries: ${LIB_FILE} ${WISH_EXE}
+binaries: ${LIB_FILE} ${WISH_EXE} ${TKKIT_EXE}
 
 libraries:
 
@@ -644,24 +633,22 @@ null.zip:
 
 # Rather than force an install, pack the files we need into a
 # file system under our control
-tkzsh.vfs: ${LIB_FILE}
+tkkit.vfs: ${LIB_FILE}
 	@echo "Building VFS File system in tclkit.vfs"
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
-	    "$(UNIX_DIR)/tkzsh.vfs/boot/tcl" "$(TCL_SRC_DIR)"  unix
+	    "$(UNIX_DIR)/tkkit.vfs/boot/tcl" "$(TCL_SRC_DIR)"  unix
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
-	    "$(UNIX_DIR)/tkzsh.vfs/boot/tk" "$(TOP_DIR)"  unix	$(TK_LIB_FILE) ${VERSION}${PATCH_LEVEL}
+	    "$(UNIX_DIR)/tkkit.vfs/boot/tk" "$(TOP_DIR)"  unix	$(TK_LIB_FILE) ${VERSION}${PATCH_LEVEL}
 
-$(TCL_SRC_DIR)/unix/tclzshd_bare:
-	make -C $(TCL_SRC_DIR)/unix tclzshd_bare
-	
+$(TCL_SRC_DIR)/unix/basekit_bare:
+	make -C $(TCL_SRC_DIR)/unix basekit
 
 # Builds an executable linked to the Tcl dynamic library
-tkzshd: $(TCL_SRC_DIR)/unix/tclzshd_bare tkzsh.vfs
-	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkzip.tcl" ${TKZSH_EXE} \
-		-runtime $(TCL_SRC_DIR)/unix/tclzshd_bare \
-		-directory tkzsh.vfs
-	chmod a+x ${TKZSH_EXE}	
-
+${TKKIT_EXE}: $(TCL_SRC_DIR)/unix/basekit_bare tkkit.vfs
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkzip.tcl" ${TKKIT_EXE} \
+		-runtime $(TCL_SRC_DIR)/unix/basekit_bare \
+		-directory tkkit.vfs
+	chmod a+x ${TKKIT_EXE}	
 
 # Resetting the LIB_RUNTIME_DIR below is required so that
 # the generated tktest executable gets the build directory
@@ -797,10 +784,8 @@ install-binaries: $(TK_STUB_LIB_FILE) $(TK_LIB_FILE) ${WISH_EXE}
 	fi
 	@echo "Installing ${WISH_EXE} as $(BIN_INSTALL_DIR)/wish$(VERSION)${EXE_SUFFIX}"
 	@$(INSTALL_PROGRAM) ${WISH_EXE} "$(BIN_INSTALL_DIR)/wish$(VERSION)${EXE_SUFFIX}"
-	@if test -f "${TKZSH_EXE}"; then \
-		@echo "Installing ${TKZSH_EXE} as $(BIN_INSTALL_DIR)/${TKZSH_BASE}$(VERSION)${EXE_SUFFIX}" ; \
-		@$(INSTALL_PROGRAM) ${TKZSH_EXE} "$(BIN_INSTALL_DIR)/${TKZSH_BASE}$(VERSION)${EXE_SUFFIX}" ; \
-	fi
+	@echo "Installing ${TKKIT_EXE} as $(BIN_INSTALL_DIR)/tkkit$(VERSION)${EXE_SUFFIX}"
+	@$(INSTALL_PROGRAM) ${TKKIT_EXE} "$(BIN_INSTALL_DIR)/tkkit$(VERSION)${EXE_SUFFIX}"
 	@echo "Installing tkConfig.sh to $(CONFIG_INSTALL_DIR)/"
 	@$(INSTALL_DATA) tkConfig.sh "$(CONFIG_INSTALL_DIR)/tkConfig.sh"
 	@if test "$(STUB_LIB_FILE)" != "" ; then \
@@ -951,7 +936,7 @@ Makefile: $(UNIX_DIR)/Makefile.in
 #	$(SHELL) config.status
 
 clean:
-	rm -rf tkzsh.vfs
+	rm -rf tkkit.vfs
 	rm -f *.a *.o libtk* core errs *~ \#* TAGS *.E a.out \
 		errors ${WISH_EXE} $(TKTEST_EXE) lib.exp Tk *.rsrc
 
@@ -1764,6 +1749,6 @@ BUILD_HTML = \
 .PHONY: clean distclean depend genstubs checkstubs checkexports checkuchar
 .PHONY: shell gdb valgrind valgrindshell dist alldist rpm
 .PHONY: tkLibObjs tktest-real test-classic test-ttk testlang
-.PHONY: demo install-demos tkzsh
+.PHONY: demo install-demos 
 
 # DO NOT DELETE THIS LINE -- make depend depends on it.
