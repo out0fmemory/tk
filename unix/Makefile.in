@@ -576,7 +576,7 @@ SHELL_ENV = \
 
 all: binaries libraries doc
 
-binaries: ${LIB_FILE} ${WISH_EXE} ${TKKIT_EXE}
+binaries: ${LIB_FILE} ${WISH_EXE} ${TKKIT_EXE} tkvfs.zip
 
 libraries:
 
@@ -639,6 +639,10 @@ tkkit.vfs: ${LIB_FILE}
 	    "$(UNIX_DIR)/tkkit.vfs/boot/tcl" "$(TCL_SRC_DIR)"  unix
 	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkVfs.tcl" \
 	    "$(UNIX_DIR)/tkkit.vfs/boot/tk" "$(TOP_DIR)"  unix	$(TK_LIB_FILE) ${VERSION}${PATCH_LEVEL}
+
+tkvfs.zip:  ${LIB_FILE} tkkit.vfs
+	@$(TCL_EXE) "$(TCL_SRC_DIR)/tools/mkzip.tcl" tkvfs.zip \
+		-directory tkkit.vfs
 
 $(TCL_SRC_DIR)/unix/basekit_bare:
 	make -C $(TCL_SRC_DIR)/unix basekit
@@ -786,6 +790,8 @@ install-binaries: $(TK_STUB_LIB_FILE) $(TK_LIB_FILE) ${WISH_EXE}
 	@$(INSTALL_PROGRAM) ${WISH_EXE} "$(BIN_INSTALL_DIR)/wish$(VERSION)${EXE_SUFFIX}"
 	@echo "Installing ${TKKIT_EXE} as $(BIN_INSTALL_DIR)/tkkit$(VERSION)${EXE_SUFFIX}"
 	@$(INSTALL_PROGRAM) ${TKKIT_EXE} "$(BIN_INSTALL_DIR)/tkkit$(VERSION)${EXE_SUFFIX}"
+	@echo "Installing tkvfs.zip as $(BIN_INSTALL_DIR)/tkvfs.zip"
+	@$(INSTALL_PROGRAM) tkvfs.zip "$(BIN_INSTALL_DIR)/tkvfs$(VERSION).zip"
 	@echo "Installing tkConfig.sh to $(CONFIG_INSTALL_DIR)/"
 	@$(INSTALL_DATA) tkConfig.sh "$(CONFIG_INSTALL_DIR)/tkConfig.sh"
 	@if test "$(STUB_LIB_FILE)" != "" ; then \
