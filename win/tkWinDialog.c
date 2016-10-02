@@ -18,7 +18,6 @@
 #include <cderr.h>		/* includes the common dialog error codes */
 
 #include <shlobj.h>		/* includes SHBrowseForFolder */
-#include <shobjidl.h>
 
 #ifdef _MSC_VER
 #   pragma comment (lib, "shell32.lib")
@@ -675,19 +674,25 @@ static void LoadShellProcs()
  * 	processing functions are used to cope with keyboard navigation of
  * 	controls.)
  *
- * 	Here is one solution. After returning, we poll the message queue for
- * 	1/4s looking for WM_LBUTTON up messages. If we see one it's consumed.
- * 	If we get a WM_LBUTTONDOWN message, then we exit early, since the user
- * 	must be doing something new. This fix only works for the current
- * 	application, so the problem will still occur if the open dialog
- * 	happens to be over another applications button. However this is a
- * 	fairly rare occurrance.
+ * 	Here is one solution. After returning, we flush all mouse events
+ *      for 1/4 second. In 8.6.5 and earlier, the code used to
+ *      poll the message queue consuming WM_LBUTTONUP messages.
+ * 	On seeing a WM_LBUTTONDOWN message, it would exit early, since the user
+ * 	must be doing something new. However this early exit does not work
+ *      on Vista and later because the Windows sends both BUTTONDOWN and
+ *      BUTTONUP after the DBLCLICK instead of just BUTTONUP as on XP.
+ *      Rather than try and figure out version specific sequences, we
+ *      ignore all mouse events in that interval.
+ *
+ *      This fix only works for the current application, so the problem will
+ * 	still occur if the open dialog happens to be over another applications
+ * 	button. However this is a fairly rare occurrance.
  *
  * Results:
  *	None.
  *
  * Side effects:
- *	Consumes an unwanted BUTTON messages.
+ *	Consumes unwanted mouse related messages.
  *
  *-------------------------------------------------------------------------
  */
@@ -699,10 +704,7 @@ EatSpuriousMessageBugFix(void)
     DWORD nTime = GetTickCount() + 250;
 
     while (GetTickCount() < nTime) {
-	if (PeekMessageA(&msg, 0, WM_LBUTTONDOWN, WM_LBUTTONDOWN, PM_NOREMOVE)){
-	    break;
-	}
-	PeekMessageA(&msg, 0, WM_LBUTTONUP, WM_LBUTTONUP, PM_REMOVE);
+	PeekMessage(&msg, 0, WM_MOUSEFIRST, WM_MOUSELAST, PM_REMOVE);
     }
 }
 
@@ -1103,7 +1105,7 @@ ParseOFNOptions(
     for (i = 1; i < objc; i += 2) {
 	int index;
 	const char *string;
-	Tcl_Obj *valuePtr = objv[i + 1];
+	Tcl_Obj *valuePtr;
 
 	if (Tcl_GetIndexFromObjStruct(interp, objv[i], options,
 		sizeof(struct Options), "option", 0, &index) != TCL_OK) {
@@ -1113,19 +1115,25 @@ ParseOFNOptions(
              */
             if (strcmp(Tcl_GetString(objv[i]), "-xpstyle"))
                 goto error_return;
-	    if (Tcl_GetBooleanFromObj(interp, valuePtr,
+            if (i + 1 == objc) {
+                Tcl_SetObjResult(interp, Tcl_NewStringObj("value for \"-xpstyle\" missing", -1));
+                Tcl_SetErrorCode(interp, "TK", "FILEDIALOG", "VALUE", NULL);
+                goto error_return;
+            }
+	    if (Tcl_GetBooleanFromObj(interp, objv[i+1],
                                       &optsPtr->forceXPStyle) != TCL_OK)
                 goto error_return;
 
             continue;
 
 	} else if (i + 1 == objc) {
-	    Tcl_SetObjResult(interp, Tcl_ObjPrintf(
-		    "value for \"%s\" missing", options[index].name));
-	    Tcl_SetErrorCode(interp, "TK", "FILEDIALOG", "VALUE", NULL);
-	    goto error_return;
+            Tcl_SetObjResult(interp, Tcl_ObjPrintf(
+                                 "value for \"%s\" missing", options[index].name));
+            Tcl_SetErrorCode(interp, "TK", "FILEDIALOG", "VALUE", NULL);
+            goto error_return;
 	}
 
+        valuePtr = objv[i + 1];
 	string = Tcl_GetString(valuePtr);
 	switch (options[index].value) {
 	case FILE_DEFAULT:
@@ -1186,6 +1194,7 @@ error_return:                   /* interp should already hold error */
     /* On error, we need to clean up anything we might have allocated */
     CleanupOFNOptions(optsPtr);
     return TCL_ERROR;
+
 }
 
 
@@ -1275,9 +1284,8 @@ static int GetFileNameVista(Tcl_Interp *interp, OFNOpts *optsPtr,
     int oldMode;
 
     if (tsdPtr->newFileDialogsState != FDLG_STATE_USE_NEW) {
-        /* XXX - should be an assert but Tcl does not seem to have one? */
-        Tcl_SetResult(interp, "Internal error: GetFileNameVista: IFileDialog API not available", TCL_STATIC);
-        return TCL_ERROR;
+	Tcl_Panic("Internal error: GetFileNameVista: IFileDialog API not available");
+	return TCL_ERROR;
     }
 
     /*
@@ -1323,7 +1331,11 @@ static int GetFileNameVista(Tcl_Interp *interp, OFNOpts *optsPtr,
         goto vamoose;
 
     if (filterPtr) {
-        flags |= FOS_STRICTFILETYPES;
+        /*
+         * Causes -filetypes {{All *}} -defaultextension ext to return
+         * foo.ext.ext when foo is typed into the entry box
+         *     flags |= FOS_STRICTFILETYPES;
+         */
         hr = fdlgIf->lpVtbl->SetFileTypes(fdlgIf, nfilters, filterPtr);
         if (FAILED(hr))
             goto vamoose;
@@ -1389,23 +1401,33 @@ static int GetFileNameVista(Tcl_Interp *interp, OFNOpts *optsPtr,
     }
 
     if (Tcl_DStringValue(&optsPtr->utfDirString)[0] != '\0') {
-        Tcl_DString dirString;
-	Tcl_WinUtfToTChar(Tcl_DStringValue(&optsPtr->utfDirString),
-               Tcl_DStringLength(&optsPtr->utfDirString), &dirString);
-        hr = ShellProcs.SHCreateItemFromParsingName(
-            (TCHAR *) Tcl_DStringValue(&dirString), NULL,
-            &IIDIShellItem, (void **) &dirIf);
-        /* XXX - Note on failure we do not raise error, simply ignore ini dir */
-        if (SUCCEEDED(hr)) {
-            /* Note we use SetFolder, not SetDefaultFolder - see MSDN docs */
-            fdlgIf->lpVtbl->SetFolder(fdlgIf, dirIf); /* Ignore errors */
+        Tcl_Obj *normPath, *iniDirPath;
+        iniDirPath = Tcl_NewStringObj(Tcl_DStringValue(&optsPtr->utfDirString), -1);
+        Tcl_IncrRefCount(iniDirPath);
+        normPath = Tcl_FSGetNormalizedPath(interp, iniDirPath);
+        /* XXX - Note on failures do not raise error, simply ignore ini dir */
+        if (normPath) {
+            const WCHAR *nativePath;
+            Tcl_IncrRefCount(normPath);
+            nativePath = Tcl_FSGetNativePath(normPath); /* Points INTO normPath*/
+            if (nativePath) {
+                hr = ShellProcs.SHCreateItemFromParsingName(
+                    nativePath, NULL,
+                    &IIDIShellItem, (void **) &dirIf);
+                if (SUCCEEDED(hr)) {
+                    /* Note we use SetFolder, not SetDefaultFolder - see MSDN */
+                    fdlgIf->lpVtbl->SetFolder(fdlgIf, dirIf); /* Ignore errors */
+                }
+            }
+            Tcl_DecrRefCount(normPath); /* ALSO INVALIDATES nativePath !! */
         }
-        Tcl_DStringFree(&dirString);
+        Tcl_DecrRefCount(iniDirPath);
     }
 
     oldMode = Tcl_SetServiceMode(TCL_SERVICE_ALL);
     hr = fdlgIf->lpVtbl->Show(fdlgIf, hWnd);
     Tcl_SetServiceMode(oldMode);
+    EatSpuriousMessageBugFix();
 
     /*
      * Ensure that hWnd is enabled, because it can happen that we have updated
@@ -3126,13 +3148,13 @@ HookProc(
 	if (IsWindow(hwndCtrl)) {
 	    EnableWindow(hwndCtrl, FALSE);
 	}
-	TkSendVirtualEvent(phd->parent, "TkFontchooserVisibility");
+	TkSendVirtualEvent(phd->parent, "TkFontchooserVisibility", NULL);
 	return 1; /* we handled the message */
     }
 
     if (WM_DESTROY == msg) {
 	phd->hwnd = NULL;
-	TkSendVirtualEvent(phd->parent, "TkFontchooserVisibility");
+	TkSendVirtualEvent(phd->parent, "TkFontchooserVisibility", NULL);
 	return 0;
     }
 
@@ -3150,7 +3172,7 @@ HookProc(
 	    ApplyLogfont(phd->interp, phd->cmdObj, hdc, &lf);
 	}
 	if (phd && phd->parent) {
-	    TkSendVirtualEvent(phd->parent, "TkFontchooserFontChanged");
+	    TkSendVirtualEvent(phd->parent, "TkFontchooserFontChanged", NULL);
 	}
 	return 1;
     }
@@ -3462,7 +3484,7 @@ FontchooserShowCmd(
 		ApplyLogfont(hdPtr->interp, hdPtr->cmdObj, hdc, &lf);
 	    }
 	    if (hdPtr->parent) {
-		TkSendVirtualEvent(hdPtr->parent, "TkFontchooserFontChanged");
+		TkSendVirtualEvent(hdPtr->parent, "TkFontchooserFontChanged", NULL);
 	    }
 	}
 	Tcl_SetServiceMode(oldMode);

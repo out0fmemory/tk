@@ -14,39 +14,6 @@
 /*
  *----------------------------------------------------------------------
  *
- * Tk_FreeXId --
- *
- *	This function is called to indicate that an X resource identifier is
- *	now free.
- *
- * Results:
- *	None.
- *
- * Side effects:
- *	The identifier is added to the stack of free identifiers for its
- *	display, so that it can be re-used.
- *
- *----------------------------------------------------------------------
- */
-
-void
-Tk_FreeXId(
-    Display *display,		/* Display for which xid was allocated. */
-    XID xid)			/* Identifier that is no longer in use. */
-{
-    /*
-     * This does nothing, because the XC-MISC extension takes care of
-     * freeing XIDs for us.  It has been a standard X11 extension for
-     * about 15 years as of 2008.  Keith Packard and another X.org
-     * developer suggested that we remove the previous code that used:
-     * #define XLIB_ILLEGAL_ACCESS.
-     */
-}
-
-
-/*
- *----------------------------------------------------------------------
- *
  * Tk_GetPixmap --
  *
  *	Same as the XCreatePixmap function except that it manages resource
@@ -96,7 +63,6 @@ Tk_FreePixmap(
     Pixmap pixmap)		/* Identifier for pixmap. */
 {
     XFreePixmap(display, pixmap);
-    Tk_FreeXId(display, (XID) pixmap);
 }
 
 
@@ -125,13 +91,23 @@ TkpScanWindowId(
     const char *string,
     Window *idPtr)
 {
-    int value;
+    int code;
+    Tcl_Obj obj;
 
-    if (Tcl_GetInt(interp, string, &value) != TCL_OK) {
-	return TCL_ERROR;
+    obj.refCount = 1;
+    obj.bytes = (char *) string;	/* DANGER?! */
+    obj.length = strlen(string);
+    obj.typePtr = NULL;
+
+    code = Tcl_GetLongFromObj(interp, &obj, (long *)idPtr);
+
+    if (obj.refCount > 1) {
+	Tcl_Panic("invalid sharing of Tcl_Obj on C stack");
     }
-    *idPtr = (Window) value;
-    return TCL_OK;
+    if (obj.typePtr && obj.typePtr->freeIntRepProc) {
+	obj.typePtr->freeIntRepProc(&obj);
+    }
+    return code;
 }
 
 /*

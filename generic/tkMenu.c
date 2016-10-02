@@ -38,7 +38,7 @@
  * implemented using menu clones. Menu clones are full menus in their own
  * right; they have a Tk window and pathname associated with them; they have a
  * TkMenu structure and array of entries. However, they are linked with the
- * original menu that they were cloned from. The reflect the attributes of the
+ * original menu that they were cloned from. They reflect the attributes of the
  * original, or "master", menu. So if an item is added to a menu, and that
  * menu has clones, then the item must be added to all of its clones also.
  * Menus are cloned when a menu is torn-off or when a menu is assigned as a
@@ -885,9 +885,14 @@ MenuWidgetObjCmd(
 	 * Tearoff menus are posted differently on Mac and Windows than
 	 * non-tearoffs. TkpPostMenu does not actually map the menu's window
 	 * on those platforms, and popup menus have to be handled specially.
+         * Also, menubar menues are not intended to be posted (bug 1567681,
+         * 2160206).
 	 */
 
-	if (menuPtr->menuType != TEAROFF_MENU) {
+	if (menuPtr->menuType == MENUBAR) {
+            Tcl_AppendResult(interp, "a menubar menu cannot be posted", NULL);
+            return TCL_ERROR;
+        } else if (menuPtr->menuType != TEAROFF_MENU) {
 	    result = TkpPostMenu(interp, menuPtr, x, y);
 	} else {
 	    result = TkPostTearoffMenu(interp, menuPtr, x, y);

@@ -136,6 +136,15 @@ BaseCleanup(void *recordPtr)
     	TtkFreeImageSpec(basePtr->base.imageSpec);
 }
 
+static void
+BaseImageChanged(
+	ClientData clientData, int x, int y, int width, int height,
+	int imageWidth, int imageHeight)
+{
+    Base *basePtr = (Base *)clientData;
+    TtkResizeWidget(&basePtr->core);
+}
+
 static int BaseConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
 {
     Base *basePtr = recordPtr;
@@ -149,8 +158,8 @@ static int BaseConfigure(Tcl_Interp *interp, void *recordPtr, int mask)
     }
 
     if (basePtr->base.imageObj) {
-	imageSpec = TtkGetImageSpec(
-	    interp, basePtr->core.tkwin, basePtr->base.imageObj);
+	imageSpec = TtkGetImageSpecEx(
+	    interp, basePtr->core.tkwin, basePtr->base.imageObj, BaseImageChanged, basePtr);
 	if (!imageSpec) {
 	    goto error;
 	}
@@ -413,8 +422,8 @@ typedef struct
 static Tk_OptionSpec CheckbuttonOptionSpecs[] =
 {
     {TK_OPTION_STRING, "-variable", "variable", "Variable",
-	"", Tk_Offset(Checkbutton, checkbutton.variableObj), -1,
-	TK_OPTION_DONT_SET_DEFAULT,0,0},
+	NULL, Tk_Offset(Checkbutton, checkbutton.variableObj), -1,
+	TK_OPTION_NULL_OK,0,0},
     {TK_OPTION_STRING, "-onvalue", "onValue", "OnValue",
 	"1", Tk_Offset(Checkbutton, checkbutton.onValueObj), -1,
 	0,0,0},

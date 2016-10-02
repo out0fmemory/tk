@@ -35,7 +35,7 @@ MANDIR			?= ${PREFIX}/man
 TCL_BUILD_DIR		?= ${BUILD_DIR}/tcl/${BUILD_STYLE}
 # location of installed tcl, only used if tcl in TCL_BUILD_DIR can't be found
 TCL_FRAMEWORK_DIR	?= /Library/Frameworks
-TCLSH_DIR		?= ${PREFIX}
+TCLSH_DIR		?= ${PREFIX}/bin
 
 # set to non-empty value to install manpages in addition to html help:
 INSTALL_MANPAGES	?=
@@ -102,7 +102,7 @@ PROJECT			:= tk
 PRODUCT_NAME		:= Tk
 
 UNIX_DIR		:= ${CURDIR}/../unix
-VERSION			:= $(shell awk -F= '/^TK_VERSION/ {print $$2; nextfile}' ${UNIX_DIR}/configure.in)
+VERSION			:= $(shell awk -F= '/^TK_VERSION/ {print $$2; nextfile}' ${UNIX_DIR}/configure.ac)
 TCL_VERSION		:= ${VERSION}
 wish			:= wish
 WISH			= wish${VERSION}

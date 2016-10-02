@@ -590,7 +590,7 @@ if {$tcl_platform(platform) == "windows"} {
 test textDisp-4.6 {UpdateDisplayInfo, tiny window} {
     # This test was failing on Windows because the title bar on .
     # was a certain minimum size and it was interfering with the size
-    # requested.  The "overrideredirect" gets rid of the titlebar so 
+    # requested.  The "overrideredirect" gets rid of the titlebar so
     # the toplevel can shrink to the appropriate size.  On Unix, setting
     # the overrideredirect on "." confuses the window manager and
     # causes subsequent tests to fail.
@@ -615,10 +615,14 @@ catch {destroy .f2}
 .t configure -borderwidth 0 -wrap char
 wm geom . {}
 update
+set bw [.t cget -borderwidth]
+set px [.t cget -padx]
+set py [.t cget -pady]
+set hlth [.t cget -highlightthickness]
 test textDisp-4.7 {UpdateDisplayInfo, filling in extra vertical space} {
     # This test was failing on Windows because the title bar on .
     # was a certain minimum size and it was interfering with the size
-    # requested.  The "overrideredirect" gets rid of the titlebar so 
+    # requested.  The "overrideredirect" gets rid of the titlebar so
     # the toplevel can shrink to the appropriate size.  On Unix, setting
     # the overrideredirect on "." confuses the window manager and
     # causes subsequent tests to fail.
@@ -634,7 +638,7 @@ test textDisp-4.7 {UpdateDisplayInfo, filling in extra vertical space} {
     update
     set x [list [.t index @0,0] $tk_textRelayout $tk_textRedraw]
     wm overrideredirect . 0
-    update 
+    update
     set x
 } {8.0 {16.0 17.0 15.0 14.0 13.0 12.0 11.0 10.0 9.0 8.0} {8.0 9.0 10.0 11.0 12.0 13.0 14.0 15.0 16.0 17.0}}
 test textDisp-4.8 {UpdateDisplayInfo, filling in extra vertical space} {
@@ -653,7 +657,7 @@ test textDisp-4.9 {UpdateDisplayInfo, filling in extra vertical space} {textfont
     update
     .t delete 15.0 end
     list [.t bbox 7.0] [.t bbox 12.0]
-} [list [list 3 [expr {2*$fixedDiff + 29}] 7 $fixedHeight] [list 3 [expr {7*$fixedDiff + 94}] 7 $fixedHeight]]
+} [list [list [expr {$hlth + $px + $bw}] [expr {$hlth + $py + $bw + 2 * $fixedHeight}] $fixedWidth $fixedHeight] [list [expr {$hlth + $px + $bw}] [expr {$hlth + $py + $bw + 7 * $fixedHeight}] $fixedWidth $fixedHeight]]
 test textDisp-4.10 {UpdateDisplayInfo, filling in extra vertical space} {
     .t delete 1.0 end
     .t insert end "1\n2\n3\n4\n5\nLine 6 is such a long line that it wraps around.\n7\n8\n9\n10\n11\n12\n13\n14\n15\n16\n17"
@@ -1177,16 +1181,15 @@ test textDisp-8.12 {TkTextChanged, moving the insert cursor redraws only past an
     .t mark set insert 3.8        ; # within the same line
     update
     lappend res $tk_textRedraw
-    # This last one is tricky: correct result really is {2.0 3.0} when
-    # calling .t mark set insert, two calls to TkTextChanged are done:
-    # (a) to redraw the line of the past position of the cursor
-    # (b) to redraw the line of the new position of the cursor
-    # During (a) the display line showing the cursor gets unlinked,
-    # which leads TkTextChanged in (b) to schedule a redraw starting
-    # one line _before_ the line containing the insert cursor. This is
-    # because during (b) findDLine cannot return the display line the
-    # cursor is in since this display line was just unlinked in (a).
-} {{8.0 9.0} {8.0 12.0} {8.0 12.0} {3.0 8.0} {2.0 3.0}}
+} {{8.0 9.0} {8.0 12.0} {8.0 12.0} {3.0 8.0} {3.0 4.0}}
+test textDisp-8.13 {TkTextChanged, used to crash, see [06c1433906]} {
+    .t delete 1.0 end
+    .t insert 1.0 \nLine2\nLine3\n
+    update
+    .t insert 3.0 ""
+    .t delete 1.0 2.0
+    update idletasks
+} {}
 
 test textDisp-9.1 {TkTextRedrawTag} {
     .t configure -wrap char
@@ -1329,6 +1332,30 @@ test textDisp-9.13 {TkTextRedrawTag} {
     update
     list $tk_textRelayout $tk_textRedraw
 } {{2.0 6.0 7.0} {2.0 6.0 7.0}}
+test textDisp-9.14 {TkTextRedrawTag} {
+    pack [text .tnocrash]
+    for {set i 1} {$i < 6} {incr i} {
+        .tnocrash insert end \nfoo$i
+    }
+    .tnocrash tag configure mytag1 -relief raised
+    .tnocrash tag configure mytag2 -relief solid
+    update
+    proc doit {} {
+        .tnocrash tag add mytag1 4.0 5.0
+        .tnocrash tag add mytag2 4.0 5.0
+        after idle {
+            .tnocrash tag remove mytag1 1.0 end
+            .tnocrash tag remove mytag2 1.0 end
+        }
+        .tnocrash delete 1.0 2.0
+    }
+    doit  ; # must not crash
+    after 500 {
+        destroy .tnocrash
+        set done 1
+    }
+    vwait done
+} {}
 
 test textDisp-10.1 {TkTextRelayoutWindow} {
     .t configure -wrap char
@@ -1570,6 +1597,17 @@ test textDisp-11.20 {TkTextSetYView, see in elided lines} {
     # this shall not crash (null chunkPtr in TkTextSeeCmd is tested)
     .top.t see 3.0
 } {}
+test textDisp-11.21 {TkTextSetYView, window height smaller than the line height} {
+    .top.t delete 1.0 end
+    for {set i 1} {$i <= 10} {incr i} {
+        .top.t insert end "Line $i\n"
+    }
+    set lineheight [font metrics [.top.t cget -font] -linespace]
+    wm geometry .top 200x[expr {$lineheight / 2}]
+    update
+    .top.t see 1.0
+    .top.t index @0,[expr {$lineheight - 2}]
+} {1.0}
 
 .t configure -wrap word
 .t delete 50.0 51.0
@@ -1825,7 +1863,7 @@ test textDisp-14.14 {TkTextXviewCmd procedure} {
     .t insert end "a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 b0 b1 b2 b3 b4 b5 b6 b7 b8 b9 c0 c1 c2 c3 c4 c5 c6 c7 c8 c9 c0 c1 c2 c3 c4 c5 c6 c7 c8 c9\n"
     .t insert end "xxxx xxxxxxxxx xxxxxxxxxxxxx"
     .t xview moveto 0
-    .t xview scroll 21 u  
+    .t xview scroll 21 u
     set x [.t index @0,22]
     .t xview scroll -1 u
     lappend x [.t index @0,22]
@@ -2006,9 +2044,9 @@ test textDisp-16.18 {TkTextYviewCmd procedure, "moveto" roundoff} {textfonts} {
     wm geometry .top1 +0+0
     text .top1.t -height 3 -width 4 -wrap none -setgrid 1 -padx 6 \
 	-spacing3 6
-    .top1.t insert end "1\n2\n3\n4\n5\n6"
     pack .top1.t
     update
+    .top1.t insert end "1\n2\n3\n4\n5\n6"
     .top1.t yview moveto 0.3333
     set result [.top1.t yview]
     destroy .top1
@@ -2279,7 +2317,7 @@ test textDisp-17.8 {TkTextScanCmd procedure} {textfonts} {
     .t xview moveto 0
     .t scan mark 0 60
     .t scan dragto 30 100
-    .t scan dragto 25 95 
+    .t scan dragto 25 95
     .t index @0,0
 } {4.7}
 test textDisp-17.9 {TkTextScanCmd procedure} {textfonts} {
@@ -2887,7 +2925,7 @@ test textDisp-21.4 {count -displaylines regression} {
 Use the Up (cursor) key to scroll up one line at a time.  At the second press, the cursor either gets locked or jumps several lines.
 
 Connect with Tkcon.  The command
-.u count -displaylines \ 
+.u count -displaylines \
 3.10 2.173
 should give answer -1; it gives me 5.
 
@@ -3781,7 +3819,7 @@ test textDisp-29.2.5 {miscellaneous: can show last character} {
     set iWidth [lindex [.t2.t bbox end-2c] 2]
     .t2.t xview scroll 2 units
     set iWidth2 [lindex [.t2.t bbox end-2c] 2]
-    
+
     if {($iWidth == $iWidth2) && $iWidth >= 2} {
 	set result "correct"
     } else {
@@ -4100,7 +4138,7 @@ test textDisp-33.2 {one line longer than fits in the widget} {
     .tt debug 1
     set tk_textHeightCalc ""
     .tt insert 1.0 [string repeat "more wrap + " 1]
-    after 100 ; update
+    after 100 ; update idletasks
     # Nothing should have been recalculated.
     set tk_textHeightCalc
 } {}
@@ -4158,29 +4196,50 @@ test textDisp-33.5 {bold or italic fonts} win {
 } {italic font measurement ok}
 destroy .tt
 
-test textDisp-34.1 {Text widgets multi-scrolling problem: Bug 2677890} -setup {
-    pack [text .t1 -width 10 -yscrollcommand {.sy set}] \
-	[ttk::scrollbar .sy -orient vertical -command {.t1 yview}] \
-	-side left -fill both
-    bindtags .sy {}; # No clicky!
+test textDisp-34.1 {Line heights recalculation problem: bug 2677890} -setup {
+    pack [text .t1] -expand 1 -fill both
     set txt ""
-    for {set i 0} {$i < 99} {incr i} {
-	lappend txt "$i" [list pc $i] "\n" ""
+    for {set i 1} {$i < 100} {incr i} {
+        append txt "Line $i\n"
     }
     set result {}
 } -body {
-    .t1 insert end {*}$txt
+    .t1 insert end $txt
+    .t1 debug 1
+    set ge [winfo geometry .]
+    scan $ge "%dx%d+%d+%d" width height left top
     update
-    lappend result [.sy get]
-    .t1 replace 6.0 6.0+1c "*"
-    lappend result [.sy get]
-    after 0 {lappend result [.sy get]}
-    after 1000 {lappend result [.sy get]}
-    vwait result;vwait result
-    return $result
+    .t1 sync
+    set negative 0
+    bind .t1 <<WidgetViewSync>> { if {%d < 0} {set negative 1} }
+    # Without the fix for bug 2677890, changing the width of the toplevel
+    # will launch recomputation of the line heights, but will produce negative
+    # number of still remaining outdated lines, which is obviously wrong.
+    # Thus we use this way to check for regression regarding bug 2677890,
+    # i.e. to check that the fix for this bug really is still in.
+    wm geometry . "[expr {$width * 2}]x$height+$left+$top"
+    update
+    .t1 sync
+    set negative
 } -cleanup {
-    destroy .t1 .sy
-} -result {{0.0 1.0} {0.0 1.0} {0.0 1.0} {0.0 0.24}}
+    destroy .t1
+} -result {0}
+
+test textDisp-35.1 {Init value of charHeight - Dancing scrollbar bug 1499165} -setup {
+    pack [text .t1] -fill both -expand y -side left
+    .t insert end "[string repeat a\nb\nc\n 500000]THE END\n"
+    set res {}
+} -body {
+    .t see 10000.0
+    after 300 {set fr1 [.t yview] ; set done 1}
+    vwait done
+    after 300 {set fr2 [.t yview] ; set done 1}
+    vwait done
+    lappend res [expr {[lindex $fr1 0] == [lindex $fr2 0]}]
+    lappend res [expr {[lindex $fr1 1] == [lindex $fr2 1]}]
+} -cleanup {
+    destroy .t1
+} -result {1 1}
 
 deleteWindows
 option clear

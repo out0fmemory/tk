@@ -38,6 +38,15 @@ MODULE_SCOPE const TkStubs tkStubs;
  */
 
 #undef Tk_MainEx
+#undef Tk_FreeXId
+
+static void
+doNothing(void)
+{
+    /* dummy implementation, no need to do anything */
+}
+
+#define Tk_FreeXId ((void (*)(Display *, XID)) doNothing)
 
 #ifdef _WIN32
 
@@ -556,7 +565,7 @@ static const TkIntPlatStubs tkIntPlatStubs = {
     TkGetTransientMaster, /* 49 */
     TkGenerateButtonEvent, /* 50 */
     TkGenWMDestroyEvent, /* 51 */
-    0, /* 52 */
+    TkMacOSXSetDrawingEnabled, /* 52 */
     TkpGetMS, /* 53 */
     TkMacOSXDrawable, /* 54 */
     TkpScanWindowId, /* 55 */

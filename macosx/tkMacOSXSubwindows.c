@@ -149,9 +149,10 @@ XMapWindow(
     if (Tk_IsTopLevel(macWin->winPtr)) {
 	if (!Tk_IsEmbedded(macWin->winPtr)) {
 	    NSWindow *win = TkMacOSXDrawableWindow(window);
-
-	    [win makeKeyAndOrderFront:NSApp];
-	    [win windowRef];
+	    [NSApp activateIgnoringOtherApps:YES];
+	    if ( [win canBecomeKeyWindow] ) {
+		[win makeKeyAndOrderFront:NSApp];
+	    }
 	    TkMacOSXApplyWindowAttributes(macWin->winPtr, win);
 	}
 	TkMacOSXInvalClipRgns((Tk_Window) macWin->winPtr);
@@ -310,11 +311,9 @@ XResizeWindow(
     unsigned int height)
 {
     MacDrawable *macWin = (MacDrawable *) window;
-
     display->request++;
     if (Tk_IsTopLevel(macWin->winPtr) && !Tk_IsEmbedded(macWin->winPtr)) {
 	NSWindow *w = macWin->winPtr->wmInfoPtr->window;
-
 	if (w) {
 	    NSRect r = [w contentRectForFrameRect:[w frame]];
 	    r.origin.y += r.size.height - height;
@@ -357,12 +356,20 @@ XMoveResizeWindow(
     display->request++;
     if (Tk_IsTopLevel(macWin->winPtr) && !Tk_IsEmbedded(macWin->winPtr)) {
 	NSWindow *w = macWin->winPtr->wmInfoPtr->window;
-
 	if (w) {
-	    NSRect r = NSMakeRect(x + macWin->winPtr->wmInfoPtr->xInParent,
-		    tkMacOSXZeroScreenHeight - (y +
-		    macWin->winPtr->wmInfoPtr->yInParent + height),
-		    width, height);
+	    /* We explicitly convert everything to doubles so we don't get
+	     * surprised (again) by what happens when you do arithmetic with
+	     * unsigned ints.
+	     */
+	    CGFloat X = (CGFloat)x;
+	    CGFloat Y = (CGFloat)y;
+	    CGFloat Width = (CGFloat)width;
+	    CGFloat Height = (CGFloat)height;
+	    CGFloat XOff = (CGFloat)macWin->winPtr->wmInfoPtr->xInParent;
+	    CGFloat YOff = (CGFloat)macWin->winPtr->wmInfoPtr->yInParent;
+	    NSRect r = NSMakeRect(X + XOff,
+	    			  tkMacOSXZeroScreenHeight - Y - YOff - Height,
+	    			  Width, Height);
 	    [w setFrame:[w frameRectForContentRect:r] display:YES];
 	}
     } else {
@@ -398,7 +405,6 @@ XMoveWindow(
     display->request++;
     if (Tk_IsTopLevel(macWin->winPtr) && !Tk_IsEmbedded(macWin->winPtr)) {
 	NSWindow *w = macWin->winPtr->wmInfoPtr->window;
-
 	if (w) {
 	    [w setFrameTopLeftPoint:NSMakePoint(x, tkMacOSXZeroScreenHeight - y)];
 	}
@@ -649,6 +655,65 @@ XConfigureWindow(
 /*
  *----------------------------------------------------------------------
  *
+ * TkMacOSXSetDrawingEnabled --
+ *
+ *	This function sets the TK_DO_NOT_DRAW flag for a given window and
+ *	all of its children.
+ *
+ * Results:
+ *	None.
+ *
+ * Side effects:
+ *	The clipping regions for the window and its children are cleared.
+ *
+ *----------------------------------------------------------------------
+ */
+
+void
+TkMacOSXSetDrawingEnabled(
+	TkWindow *winPtr,
+	int flag)
+{
+    TkWindow *childPtr;
+    MacDrawable *macWin = winPtr->privatePtr;
+
+    if (macWin) {
+	if (flag ) {
+	    macWin->flags &= ~TK_DO_NOT_DRAW;
+	} else {
+	    macWin->flags |= TK_DO_NOT_DRAW;
+	}
+    }
+
+    /*
+     * Set the flag for all children & their descendants, excluding
+     * Toplevels. (??? Do we need to exclude Toplevels?)
+     */
+
+    childPtr = winPtr->childList;
+    while (childPtr) {
+	if (!Tk_IsTopLevel(childPtr)) {
+	    TkMacOSXSetDrawingEnabled(childPtr, flag);
+	}
+	childPtr = childPtr->nextPtr;
+    }
+
+    /*
+     * If the window is a container, set the flag for its embedded window.
+     */
+
+    if (Tk_IsContainer(winPtr)) {
+	childPtr = TkpGetOtherWindow(winPtr);
+
+	if (childPtr) {
+	    TkMacOSXSetDrawingEnabled(childPtr, flag);
+	}
+    }
+}
+
+/*
+ *----------------------------------------------------------------------
+ *
  * TkMacOSXUpdateClipRgn --
  *
  *	This function updates the clipping regions for a given window and all of
@@ -738,10 +803,6 @@ TkMacOSXUpdateClipRgn(
 		/*
 		 * TODO: Here we should handle out of process embedding.
 		 */
-	    } else if (winPtr->wmInfoPtr->attributes &
-		    kWindowResizableAttribute) {
-		NSWindow *w = TkMacOSXDrawableWindow(winPtr->window);
-
 	    }
 	    macWin->aboveVisRgn = HIShapeCreateCopy(rgn);
 

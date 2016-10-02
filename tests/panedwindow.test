@@ -98,168 +98,195 @@ test panedwindow-1.17 {configuration options: -orient (good)} -body {
 test panedwindow-1.18 {configuration options: -orient (bad)} -body {
     .p configure -orient badValue
 } -returnCodes error -result {bad orient "badValue": must be horizontal or vertical}
-test panedwindow-1.19 {configuration options: -relief (good)} -body {
+test panedwindow-1.19 {configuration options: -proxybackground (good)} -body {
+    .p configure -proxybackground "#f0a0a0"
+    list [lindex [.p configure -proxybackground] 4] [.p cget -proxybackground]
+} -cleanup {
+    .p configure -proxybackground [lindex [.p configure -proxybackground] 3]
+} -result {{#f0a0a0} #f0a0a0}
+test panedwindow-1.20 {configuration options: -proxybackground (bad)} -body {
+    .p configure -proxybackground badValue
+} -returnCodes error -result {unknown color name "badValue"}
+test panedwindow-1.21 {configuration options: -proxyborderwidth (good)} -body {
+    .p configure -proxyborderwidth 1.3
+    list [lindex [.p configure -proxyborderwidth] 4] [.p cget -proxyborderwidth]
+} -cleanup {
+    .p configure -proxyborderwidth [lindex [.p configure -proxyborderwidth] 3]
+} -result {1.3 1.3}
+test panedwindow-1.22 {configuration options: -proxyborderwidth (bad)} -body {
+    .p configure -proxyborderwidth badValue
+} -returnCodes error -result {bad screen distance "badValue"}
+test panedwindow-1.23 {configuration options: -proxyrelief (good)} -body {
+    .p configure -proxyrelief groove
+    list [lindex [.p configure -proxyrelief] 4] [.p cget -proxyrelief]
+} -cleanup {
+    .p configure -proxyrelief [lindex [.p configure -proxyrelief] 3]
+} -result {groove groove}
+test panedwindow-1.24 {configuration options: -proxyrelief (bad)} -body {
+    .p configure -proxyrelief 1.5
+} -returnCodes error -result {bad relief "1.5": must be flat, groove, raised, ridge, solid, or sunken}
+test panedwindow-1.25 {configuration options: -relief (good)} -body {
     .p configure -relief groove
     list [lindex [.p configure -relief] 4] [.p cget -relief]
 } -cleanup {
     .p configure -relief [lindex [.p configure -relief] 3]
 } -result {groove groove}
-test panedwindow-1.20 {configuration options: -relief (bad)} -body {
+test panedwindow-1.26 {configuration options: -relief (bad)} -body {
     .p configure -relief 1.5
 } -returnCodes error -result {bad relief "1.5": must be flat, groove, raised, ridge, solid, or sunken}
-test panedwindow-1.21 {configuration options: -sashcursor (good)} -body {
+test panedwindow-1.27 {configuration options: -sashcursor (good)} -body {
     .p configure -sashcursor arrow
     list [lindex [.p configure -sashcursor] 4] [.p cget -sashcursor]
 } -cleanup {
     .p configure -sashcursor [lindex [.p configure -sashcursor] 3]
 } -result {arrow arrow}
-test panedwindow-1.22 {configuration options: -sashcursor (bad)} -body {
+test panedwindow-1.28 {configuration options: -sashcursor (bad)} -body {
     .p configure -sashcursor badValue
 } -returnCodes error -result {bad cursor spec "badValue"}
-test panedwindow-1.23 {configuration options: -sashpad (good)} -body {
+test panedwindow-1.29 {configuration options: -sashpad (good)} -body {
     .p configure -sashpad 1.3
     list [lindex [.p configure -sashpad] 4] [.p cget -sashpad]
 } -cleanup {
     .p configure -sashpad [lindex [.p configure -sashpad] 3]
 } -result {1 1}
-test panedwindow-1.24 {configuration options: -sashpad (bad)} -body {
+test panedwindow-1.30 {configuration options: -sashpad (bad)} -body {
     .p configure -sashpad badValue
 } -returnCodes error -result {bad screen distance "badValue"}
-test panedwindow-1.25 {configuration options: -sashrelief (good)} -body {
+test panedwindow-1.31 {configuration options: -sashrelief (good)} -body {
     .p configure -sashrelief groove
     list [lindex [.p configure -sashrelief] 4] [.p cget -sashrelief]
 } -cleanup {
     .p configure -sashrelief [lindex [.p configure -sashrelief] 3]
 } -result {groove groove}
-test panedwindow-1.26 {configuration options: -sashrelief (bad)} -body {
+test panedwindow-1.32 {configuration options: -sashrelief (bad)} -body {
     .p configure -sashrelief 1.5
 } -returnCodes error -result {bad relief "1.5": must be flat, groove, raised, ridge, solid, or sunken}
-test panedwindow-1.27 {configuration options: -sashwidth (good)} -body {
+test panedwindow-1.33 {configuration options: -sashwidth (good)} -body {
     .p configure -sashwidth 10
     list [lindex [.p configure -sashwidth] 4] [.p cget -sashwidth]
 } -cleanup {
     .p configure -sashwidth [lindex [.p configure -sashwidth] 3]
 } -result {10 10}
-test panedwindow-1.28 {configuration options: -sashwidth (bad)} -body {
+test panedwindow-1.34 {configuration options: -sashwidth (bad)} -body {
     .p configure -sashwidth badValue
 } -returnCodes error -result {bad screen distance "badValue"}
-test panedwindow-1.29 {configuration options: -showhandle (good)} -body {
+test panedwindow-1.35 {configuration options: -showhandle (good)} -body {
     .p configure -showhandle true
     list [lindex [.p configure -showhandle] 4] [.p cget -showhandle]
 } -cleanup {
     .p configure -showhandle [lindex [.p configure -showhandle] 3]
 } -result {1 1}
-test panedwindow-1.30 {configuration options: -showhandle (bad)} -body {
+test panedwindow-1.36 {configuration options: -showhandle (bad)} -body {
     .p configure -showhandle foo
 } -returnCodes error -result {expected boolean value but got "foo"}
-test panedwindow-1.31 {configuration options: -width (good)} -body {
+test panedwindow-1.37 {configuration options: -width (good)} -body {
     .p configure -width 402
     list [lindex [.p configure -width] 4] [.p cget -width]
 } -cleanup {
     .p configure -width [lindex [.p configure -width] 3]
 } -result {402 402}
-test panedwindow-1.32 {configuration options: -width (bad)} -body {
+test panedwindow-1.38 {configuration options: -width (bad)} -body {
     .p configure -width badValue
 } -returnCodes error -result {bad screen distance "badValue"}
 
-test panedwindow-1.33 {configuration options: -after (good)} -body {
+test panedwindow-1.39 {configuration options: -after (good)} -body {
     .p paneconfigure .b -after .c
     list [lindex [.p paneconfigure .b -after] 4] \
         [.p panecget .b -after]
 } -cleanup {
     .p paneconfig .b -after [lindex [.p paneconfig .b -after] 3]
 } -result {.c .c}
-test panedwindow-1.34 {configuration options: -after (bad)} -body {
+test panedwindow-1.40 {configuration options: -after (bad)} -body {
     .p paneconfigure .b -after badValue
 } -returnCodes error -result {bad window path name "badValue"}
-test panedwindow-1.35 {configuration options: -before (good)} -body {
+test panedwindow-1.41 {configuration options: -before (good)} -body {
     .p paneconfigure .b -before .c
     list [lindex [.p paneconfigure .b -before] 4] \
         [.p panecget .b -before]
 } -cleanup {
     .p paneconfig .b -before [lindex [.p paneconfig .b -before] 3]
 } -result {.c .c}
-test panedwindow-1.36 {configuration options: -before (bad)} -body {
+test panedwindow-1.42 {configuration options: -before (bad)} -body {
     .p paneconfigure .b -before badValue
 } -returnCodes error -result {bad window path name "badValue"}
-test panedwindow-1.37 {configuration options: -height (good)} -body {
+test panedwindow-1.43 {configuration options: -height (good)} -body {
     .p paneconfigure .b -height 10
     list [lindex [.p paneconfigure .b -height] 4] \
         [.p panecget .b -height]
 } -cleanup {
     .p paneconfig .b -height [lindex [.p paneconfig .b -height] 3]
 } -result {10 10}
-test panedwindow-1.38 {configuration options: -height (bad)} -body {
+test panedwindow-1.44 {configuration options: -height (bad)} -body {
     .p paneconfigure .b -height badValue
 } -returnCodes error -result {bad screen distance "badValue"}
-test panedwindow-1.39 {configuration options: -hide (good)} -body {
+test panedwindow-1.45 {configuration options: -hide (good)} -body {
     .p paneconfigure .b -hide false
     list [lindex [.p paneconfigure .b -hide] 4] \
         [.p panecget .b -hide]
 } -cleanup {
     .p paneconfig .b -hide [lindex [.p paneconfig .b -hide] 3]
 } -result {0 0}
-test panedwindow-1.40 {configuration options: -hide (bad)} -body {
+test panedwindow-1.46 {configuration options: -hide (bad)} -body {
     .p paneconfigure .b -hide foo
 } -returnCodes error -result {expected boolean value but got "foo"}
-test panedwindow-1.41 {configuration options: -minsize (good)} -body {
+test panedwindow-1.47 {configuration options: -minsize (good)} -body {
     .p paneconfigure .b -minsize 10
     list [lindex [.p paneconfigure .b -minsize] 4] \
         [.p panecget .b -minsize]
 } -cleanup {
     .p paneconfig .b -minsize [lindex [.p paneconfig .b -minsize] 3]
 } -result {10 10}
-test panedwindow-1.42 {configuration options: -minsize (bad)} -body {
+test panedwindow-1.48 {configuration options: -minsize (bad)} -body {
     .p paneconfigure .b -minsize badValue
 } -returnCodes error -result {bad screen distance "badValue"}
-test panedwindow-1.43 {configuration options: -padx (good)} -body {
+test panedwindow-1.49 {configuration options: -padx (good)} -body {
     .p paneconfigure .b -padx 1.3
     list [lindex [.p paneconfigure .b -padx] 4] \
         [.p panecget .b -padx]
 } -cleanup {
     .p paneconfig .b -padx [lindex [.p paneconfig .b -padx] 3]
 } -result {1 1}
-test panedwindow-1.44 {configuration options: -padx (bad)} -body {
+test panedwindow-1.50 {configuration options: -padx (bad)} -body {
     .p paneconfigure .b -padx badValue
 } -returnCodes error -result {bad screen distance "badValue"}
-test panedwindow-1.45 {configuration options: -pady (good)} -body {
+test panedwindow-1.51 {configuration options: -pady (good)} -body {
     .p paneconfigure .b -pady 1.3
     list [lindex [.p paneconfigure .b -pady] 4] \
         [.p panecget .b -pady]
 } -cleanup {
     .p paneconfig .b -pady [lindex [.p paneconfig .b -pady] 3]
 } -result {1 1}
-test panedwindow-1.46 {configuration options: -pady (bad)} -body {
+test panedwindow-1.52 {configuration options: -pady (bad)} -body {
     .p paneconfigure .b -pady badValue
 } -returnCodes error -result {bad screen distance "badValue"}
-test panedwindow-1.47 {configuration options: -sticky (good)} -body {
+test panedwindow-1.53 {configuration options: -sticky (good)} -body {
     .p paneconfigure .b -sticky nsew
     list [lindex [.p paneconfigure .b -sticky] 4] \
         [.p panecget .b -sticky]
 } -cleanup {
     .p paneconfig .b -sticky [lindex [.p paneconfig .b -sticky] 3]
 } -result {nesw nesw}
-test panedwindow-1.48 {configuration options: -sticky (bad)} -body {
+test panedwindow-1.54 {configuration options: -sticky (bad)} -body {
     .p paneconfigure .b -sticky abcd
 } -returnCodes error -result {bad stickyness value "abcd": must be a string containing zero or more of n, e, s, and w}
-test panedwindow-1.49 {configuration options: -stretch (good)} -body {
+test panedwindow-1.55 {configuration options: -stretch (good)} -body {
     .p paneconfigure .b -stretch alw
     list [lindex [.p paneconfigure .b -stretch] 4] \
         [.p panecget .b -stretch]
 } -cleanup {
     .p paneconfig .b -stretch [lindex [.p paneconfig .b -stretch] 3]
 } -result {always always}
-test panedwindow-1.50 {configuration options: -stretch (bad)} -body {
+test panedwindow-1.56 {configuration options: -stretch (bad)} -body {
     .p paneconfigure .b -stretch foo
 } -returnCodes error -result {bad stretch "foo": must be always, first, last, middle, or never}
-test panedwindow-1.51 {configuration options: -width (good)} -body {
+test panedwindow-1.57 {configuration options: -width (good)} -body {
     .p paneconfigure .b -width 10
     list [lindex [.p paneconfigure .b -width] 4] \
         [.p panecget .b -width]
 } -cleanup {
     .p paneconfig .b -width [lindex [.p paneconfig .b -width] 3]
 } -result {10 10}
-test panedwindow-1.52 {configuration options: -width (bad)} -body {
+test panedwindow-1.58 {configuration options: -width (bad)} -body {
     .p paneconfigure .b -width badValue
 } -returnCodes error -result {bad screen distance "badValue"}
 deleteWindows
@@ -471,7 +498,7 @@ test panedwindow-6.9 {sash coord subcommand, errors} -setup {
     .p add [frame .p.f]
     list [catch {.p sash coord -1} msg] $msg \
 	    [catch {.p sash coord  0} msg] $msg \
-	    [catch {.p sash coord  1} msg] $msg 
+	    [catch {.p sash coord  1} msg] $msg
 } -cleanup {
 	deleteWindows
 } -result [list 1 "invalid sash index" 1 "invalid sash index" 1 "invalid sash index"]
@@ -484,7 +511,7 @@ test panedwindow-6.10 {sash coord subcommand, errors} -setup {
     list [catch {.p sash coord -1} msg] $msg \
 	    [catch {.p sash coord  0} msg] \
 	    [catch {.p sash coord  1} msg] $msg \
-	    [catch {.p sash coord  2} msg] $msg 
+	    [catch {.p sash coord  2} msg] $msg
 } -cleanup {
 	deleteWindows
 } -result [list 1 "invalid sash index" 0 1 "invalid sash index" 1 "invalid sash index"]
@@ -595,7 +622,7 @@ test panedwindow-8.5 {sash dragto subcommand, errors} -setup {
 } -cleanup {
 	deleteWindows
 } -returnCodes error -result {expected integer but got "bar"}
-    
+
 
 test panedwindow-9.1 {sash mark/sash dragto interaction} -setup {
 	deleteWindows
@@ -898,7 +925,7 @@ test panedwindow-11.15 {moving sash into "virtual" space on last pane increases 
 } -cleanup {
 	deleteWindows
 } -result {68 100}
-    
+
 
 test panedwindow-12.1 {horizontal panedwindow lays out widgets properly} -setup {
 	deleteWindows
@@ -1122,7 +1149,7 @@ test panedwindow-13.2 {PanedWindowLostSlaveProc, widget yields management} -setu
 } -body {
     # Check that the paned window correctly yields geometry management of
     # a slave when some other geometry manager steals the slave from us.
-    
+
     # This test should not cause a core dump, and it should not cause a
     # memory leak.
     panedwindow .p
@@ -1491,9 +1518,9 @@ test panedwindow-17.1 {MoveSash, move right} -setup {
 
     # Get the requested width of the paned window
     lappend result [winfo reqwidth .p]
-    
+
     .p sash place 0 30 0
-    
+
     # Get the reqwidth again, to make sure it hasn't changed
     lappend result [winfo reqwidth .p]
 
@@ -1511,7 +1538,7 @@ test panedwindow-17.2 {MoveSash, move right (unmapped) clipped by reqwidth} -set
     }
 
     .p sash place 0 100 0
-    
+
     # Get the new sash coord; it should be clipped by the reqwidth of
     # the panedwindow.
     .p sash coord 0
@@ -1525,13 +1552,13 @@ test panedwindow-17.3 {MoveSash, move right (mapped, width < reqwidth) clipped b
     foreach w {.f1 .f2} c {red blue} {
 	    .p add [frame $w -height 20 -width 20 -bg $c] -sticky nsew
     }
-    
+
     # Put the panedwindow up on the display and give it a width < reqwidth
     place .p -x 0 -y 0 -width 32
     update
 
     .p sash place 0 100 0
-    
+
     # Get the new sash coord; it should be clipped by the visible width of
     # the panedwindow.
     .p sash coord 0
@@ -1545,13 +1572,13 @@ test panedwindow-17.4 {MoveSash, move right (mapped, width > reqwidth) clipped b
     foreach w {.f1 .f2} c {red blue} {
 	    .p add [frame $w -height 20 -width 20 -bg $c] -sticky nsew
     }
-    
+
     # Put the panedwindow up on the display and give it a width > reqwidth
     place .p -x 0 -y 0 -width 102
     update
 
     .p sash place 0 200 0
-    
+
     # Get the new sash coord; it should be clipped by the visible width of
     # the panedwindow.
     .p sash coord 0
@@ -1567,7 +1594,7 @@ test panedwindow-17.5 {MoveSash, move right respects minsize} -setup {
     }
 
     .p sash place 0 100 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -1583,7 +1610,7 @@ test panedwindow-17.6 {MoveSash, move right respects minsize} -setup {
     }
 
     .p sash place 0 100 0
-    
+
     # Get the new sash coord; it should have moved as far as possible.
     .p sash coord 0
 } -cleanup {
@@ -1598,7 +1625,7 @@ test panedwindow-17.7 {MoveSash, move right pushes other sashes} -setup {
     }
 
     .p sash place 0 100 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 1
@@ -1614,7 +1641,7 @@ test panedwindow-17.8 {MoveSash, move right pushes other sashes, respects minsiz
     }
 
     .p sash place 0 100 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 1
@@ -1631,8 +1658,8 @@ test panedwindow-17.9 {MoveSash, move right respects minsize, exludes pad} -setu
     }
 
     .p sash place 0 100 0
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     .p sash coord 0
 } -cleanup {
@@ -1648,8 +1675,8 @@ test panedwindow-17.10 {MoveSash, move right, negative minsize becomes 0} -setup
     }
 
     .p sash place 0 50 0
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     list [.p sash coord 0] [.p sash coord 1]
 } -cleanup {
@@ -1666,9 +1693,9 @@ test panedwindow-17.11 {MoveSash, move left} -setup {
 
     # Get the requested width of the paned window
     lappend result [winfo reqwidth .p]
-    
+
     .p sash place 0 10 0
-    
+
     # Get the reqwidth again, to make sure it hasn't changed
     lappend result [winfo reqwidth .p]
 
@@ -1686,7 +1713,7 @@ test panedwindow-17.12 {MoveSash, move left, can't move outside of window} -setu
     }
 
     .p sash place 0 -100 0
-    
+
     # Get the new sash coord; it should be clipped by the reqwidth of
     # the panedwindow.
     .p sash coord 0
@@ -1702,7 +1729,7 @@ test panedwindow-17.13 {MoveSash, move left respects minsize} -setup {
     }
 
     .p sash place 0 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -1718,7 +1745,7 @@ test panedwindow-17.14 {MoveSash, move left respects minsize} -setup {
     }
 
     .p sash place 1 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible.
     .p sash coord 1
 } -cleanup {
@@ -1733,7 +1760,7 @@ test panedwindow-17.15 {MoveSash, move left pushes other sashes} -setup {
     }
 
     .p sash place 1 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -1749,7 +1776,7 @@ test panedwindow-17.16 {MoveSash, move left pushes other sashes, respects minsiz
     }
 
     .p sash place 1 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -1766,8 +1793,8 @@ test panedwindow-17.17 {MoveSash, move left respects minsize, exludes pad} -setu
     }
 
     .p sash place 1 0 0
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     .p sash coord 1
 } -cleanup {
@@ -1783,8 +1810,8 @@ test panedwindow-17.18 {MoveSash, move left, negative minsize becomes 0} -setup 
     }
 
     .p sash place 1 10 0
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     list [.p sash coord 0] [.p sash coord 1]
 } -cleanup {
@@ -1804,9 +1831,9 @@ test panedwindow-18.1 {MoveSash, move down} -setup {
 
     # Get the requested width of the paned window
     lappend result [winfo reqheight .p]
-    
+
     .p sash place 0 0 30
-    
+
     # Get the reqwidth again, to make sure it hasn't changed
     lappend result [winfo reqheight .p]
 
@@ -1825,7 +1852,7 @@ test panedwindow-18.2 {MoveSash, move down (unmapped) clipped by reqheight} -set
     }
 
     .p sash place 0 0 100
-    
+
     # Get the new sash coord; it should be clipped by the reqheight of
     # the panedwindow.
     .p sash coord 0
@@ -1840,13 +1867,13 @@ test panedwindow-18.3 {MoveSash, move down (mapped, height < reqheight) clipped 
     foreach w {.f1 .f2} c {red blue} {
 	    .p add [frame $w -height 20 -width 20 -bg $c] -sticky nsew
     }
-    
+
     # Put the panedwindow up on the display and give it a height < reqheight
     place .p -x 0 -y 0 -height 32
     update
 
     .p sash place 0 0 100
-    
+
     # Get the new sash coord; it should be clipped by the visible height of
     # the panedwindow.
     .p sash coord 0
@@ -1861,13 +1888,13 @@ test panedwindow-18.4 {MoveSash, move down (mapped, height > reqheight) clipped 
     foreach w {.f1 .f2} c {red blue} {
 	    .p add [frame $w -height 20 -width 20 -bg $c] -sticky nsew
     }
-    
+
     # Put the panedwindow up on the display and give it a width > reqwidth
     place .p -x 0 -y 0 -height 102
     update
 
     .p sash place 0 0 200
-    
+
     # Get the new sash coord; it should be clipped by the visible width of
     # the panedwindow.
     .p sash coord 0
@@ -1884,7 +1911,7 @@ test panedwindow-18.5 {MoveSash, move down respects minsize} -setup {
     }
 
     .p sash place 0 0 100
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -1901,7 +1928,7 @@ test panedwindow-18.6 {MoveSash, move down respects minsize} -setup {
     }
 
     .p sash place 0 0 100
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -1918,7 +1945,7 @@ test panedwindow-18.7 {MoveSash, move down pushes other sashes} -setup {
     }
 
     .p sash place 0 0 100
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 1
@@ -1935,7 +1962,7 @@ test panedwindow-18.8 {MoveSash, move down pushes other sashes, respects minsize
     }
 
     .p sash place 0 0 100
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 1
@@ -1953,8 +1980,8 @@ test panedwindow-18.9 {MoveSash, move down respects minsize, exludes pad} -setup
     }
 
     .p sash place 0 0 100
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     .p sash coord 0
 } -cleanup {
@@ -1971,8 +1998,8 @@ test panedwindow-18.10 {MoveSash, move right, negative minsize becomes 0} -setup
     }
 
     .p sash place 0 0 50
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     list [.p sash coord 0] [.p sash coord 1]
 } -cleanup {
@@ -1990,9 +2017,9 @@ test panedwindow-18.11 {MoveSash, move up} -setup {
 
     # Get the requested width of the paned window
     lappend result [winfo reqheight .p]
-    
+
     .p sash place 0 0 10
-    
+
     # Get the reqwidth again, to make sure it hasn't changed
     lappend result [winfo reqheight .p]
 
@@ -2011,7 +2038,7 @@ test panedwindow-18.12 {MoveSash, move up, can't move outside of window} -setup 
     }
 
     .p sash place 0 0 -100
-    
+
     # Get the new sash coord; it should be clipped by the reqwidth of
     # the panedwindow.
     .p sash coord 0
@@ -2028,7 +2055,7 @@ test panedwindow-18.13 {MoveSash, move up respects minsize} -setup {
     }
 
     .p sash place 0 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -2045,7 +2072,7 @@ test panedwindow-18.14 {MoveSash, move up respects minsize} -setup {
     }
 
     .p sash place 1 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible.
     .p sash coord 1
 } -cleanup {
@@ -2061,7 +2088,7 @@ test panedwindow-18.15 {MoveSash, move up pushes other sashes} -setup {
     }
 
     .p sash place 1 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -2078,7 +2105,7 @@ test panedwindow-18.16 {MoveSash, move up pushes other sashes, respects minsize}
     }
 
     .p sash place 1 0 0
-    
+
     # Get the new sash coord; it should have moved as far as possible while
     # respecting minsizes.
     .p sash coord 0
@@ -2096,8 +2123,8 @@ test panedwindow-18.17 {MoveSash, move up respects minsize, exludes pad} -setup 
     }
 
     .p sash place 1 0 0
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     .p sash coord 1
 } -cleanup {
@@ -2114,8 +2141,8 @@ test panedwindow-18.18 {MoveSash, move up, negative minsize becomes 0} -setup {
     }
 
     .p sash place 1 0 10
-    
-    # Get the new sash coord; it should have moved as far as possible, 
+
+    # Get the new sash coord; it should have moved as far as possible,
     # respecting minsizes.
     list [.p sash coord 0] [.p sash coord 1]
 } -cleanup {
@@ -4301,7 +4328,7 @@ test panedwindow-20.2 {destroyed slave causes geometry recomputation} -setup {
 } -cleanup {
     deleteWindows
 } -result 20
-    
+
 
 test panedwindow-21.1 {ArrangePanes, extra space is given to the last pane} -setup {
 	deleteWindows
@@ -4928,6 +4955,38 @@ test panedwindow-23.30 {ConfigurePanes, -hide works} -setup {
 } -cleanup {
     deleteWindows
 } -result {1 1 1 0 39 40 40 1 130 1 0 1 1 40 40 40 42 130}
+test panedwindow-23.30a {ConfigurePanes, hidden panes are unmapped} -setup {
+	deleteWindows
+} -body {
+    panedwindow .p1 -sashrelief raised
+    panedwindow .p2 -sashrelief raised
+    label .l1 -text Label1
+    label .l2 -text Label2
+    label .l3 -text Label3
+    .p2 add .l2 -sticky nsew
+    .p2 add .l3 -sticky nsew
+    .p1 add .p2 -sticky nsew
+    .p1 add .l1 -sticky nsew
+    pack .p1 -side top -expand 1 -fill both
+	update
+	set result [list]
+	lappend result [list [winfo ismapped .p1] [winfo ismapped .p2] \
+		    [winfo ismapped .l1] [winfo ismapped .l2] [winfo ismapped .l3]]
+    .p2 paneconfigure .l1 -hide 1
+	update
+	lappend result [list [winfo ismapped .p1] [winfo ismapped .p2] \
+		    [winfo ismapped .l1] [winfo ismapped .l2] [winfo ismapped .l3]]
+    .p1 paneconfigure .p2 -hide 1
+	update
+	lappend result [list [winfo ismapped .p1] [winfo ismapped .p2] \
+		    [winfo ismapped .l1] [winfo ismapped .l2] [winfo ismapped .l3]]
+    .p1 paneconfigure .p2 -hide 0
+	update
+	lappend result [list [winfo ismapped .p1] [winfo ismapped .p2] \
+		    [winfo ismapped .l1] [winfo ismapped .l2] [winfo ismapped .l3]]
+} -cleanup {
+    deleteWindows
+} -result {{1 1 1 1 1} {1 1 0 1 1} {1 0 0 0 0} {1 1 0 1 1}}
 test panedwindow-23.31 {ConfigurePanes, -hide works, last pane stretches} -setup {
 	deleteWindows
 } -body {
@@ -5087,6 +5146,27 @@ test panedwindow-25.1 {DestroyPanedWindow} -setup {
     }
     set result {}
 } -result {}
+test panedwindow-25.2 {UnmapNotify and MapNotify events are propagated to slaves} -setup {
+    deleteWindows
+} -body {
+    panedwindow .pw
+    .pw add [button .pw.b]
+    pack .pw
+    update
+    set result [winfo ismapped .pw.b]
+    pack forget .pw
+    update
+    lappend result [winfo ismapped .pw.b]
+    lappend result [winfo ismapped .pw]
+    pack .pw
+    update
+    lappend result [winfo ismapped .pw]
+    lappend result [winfo ismapped .pw.b]
+    destroy .pw .pw.b
+    set result
+} -cleanup {
+	deleteWindows
+} -result {1 0 0 1 1}
 
 
 test panedwindow-26.1 {PanedWindowIdentifyCoords} -setup {

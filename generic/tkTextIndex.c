@@ -40,9 +40,9 @@ static const char *	StartEnd(TkText *textPtr, const char *string,
 static int		GetIndex(Tcl_Interp *interp, TkSharedText *sharedPtr,
 			    TkText *textPtr, const char *string,
 			    TkTextIndex *indexPtr, int *canCachePtr);
-static int              IndexCountBytesOrdered(CONST TkText *textPtr,
-                            CONST TkTextIndex *indexPtr1,
-                            CONST TkTextIndex *indexPtr2);
+static int              IndexCountBytesOrdered(const TkText *textPtr,
+                            const TkTextIndex *indexPtr1,
+                            const TkTextIndex *indexPtr2);
 
 /*
  * The "textindex" Tcl_Obj definition:
@@ -1636,9 +1636,9 @@ TkTextIndexForwChars(
 
 int
 TkTextIndexCountBytes(
-    CONST TkText *textPtr,
-    CONST TkTextIndex *indexPtr1, /* Index describing one location. */
-    CONST TkTextIndex *indexPtr2) /* Index describing second location. */
+    const TkText *textPtr,
+    const TkTextIndex *indexPtr1, /* Index describing one location. */
+    const TkTextIndex *indexPtr2) /* Index describing second location. */
 {
     int compare = TkTextIndexCmp(indexPtr1, indexPtr2);
 
@@ -1653,11 +1653,11 @@ TkTextIndexCountBytes(
 
 static int
 IndexCountBytesOrdered(
-    CONST TkText *textPtr,
-    CONST TkTextIndex *indexPtr1,
+    const TkText *textPtr,
+    const TkTextIndex *indexPtr1,
 				/* Index describing location of character from
 				 * which to count. */
-    CONST TkTextIndex *indexPtr2)
+    const TkTextIndex *indexPtr2)
 				/* Index describing location of last character
 				 * at which to stop the count. */
 {
@@ -1683,7 +1683,7 @@ IndexCountBytesOrdered(
         byteCount += segPtr->size;
     }
 
-    linePtr = indexPtr1->linePtr->nextPtr;
+    linePtr = TkBTreeNextLine(textPtr, indexPtr1->linePtr);
     while (linePtr != indexPtr2->linePtr) {
 	for (segPtr = linePtr->segPtr; segPtr != NULL;
                 segPtr = segPtr->nextPtr) {
@@ -2205,7 +2205,7 @@ StartEnd(
     TkText *textPtr,		/* Information about text widget. */
     const char *string,		/* String to parse for additional info about
 				 * modifier (count and units). Points to first
-				 * character of modifer word. */
+				 * character of modifier word. */
     TkTextIndex *indexPtr)	/* Index to modify based on string. */
 {
     const char *p;
@@ -2298,9 +2298,9 @@ StartEnd(
 	    int chSize = 1;
 
 	    if (segPtr->typePtr == &tkTextCharType) {
-		Tcl_UniChar ch;
+		int ch;
 
-		chSize = Tcl_UtfToUniChar(segPtr->body.chars + offset, &ch);
+		chSize = TkUtfToUniChar(segPtr->body.chars + offset, &ch);
 		if (!Tcl_UniCharIsWordChar(ch)) {
 		    break;
 		}
@@ -2327,7 +2327,7 @@ StartEnd(
 	int offset;
 
 	if (modifier == TKINDEX_DISPLAY) {
-	    TkTextIndexForwChars(NULL, indexPtr, 0, indexPtr,
+	    TkTextIndexForwChars(textPtr, indexPtr, 0, indexPtr,
 		    COUNT_DISPLAY_INDICES);
 	}
 
@@ -2343,9 +2343,9 @@ StartEnd(
 	    int chSize = 1;
 
 	    if (segPtr->typePtr == &tkTextCharType) {
-		Tcl_UniChar ch;
 
-		Tcl_UtfToUniChar(segPtr->body.chars + offset, &ch);
+		int ch;
+		TkUtfToUniChar(segPtr->body.chars + offset, &ch);
 		if (!Tcl_UniCharIsWordChar(ch)) {
 		    break;
 		}
@@ -2356,11 +2356,20 @@ StartEnd(
 		}
 		firstChar = 0;
 	    }
-	    offset -= chSize;
-	    indexPtr->byteIndex -= chSize;
+            if (offset == 0) {
+                if (modifier == TKINDEX_DISPLAY) {
+                    TkTextIndexBackChars(textPtr, indexPtr, 1, indexPtr,
+                        COUNT_DISPLAY_INDICES);
+                } else {
+                    TkTextIndexBackChars(NULL, indexPtr, 1, indexPtr,
+                        COUNT_INDICES);
+                }
+            } else {
+                indexPtr->byteIndex -= chSize;
+            }
+            offset -= chSize;
 	    if (offset < 0) {
-		if (indexPtr->byteIndex < 0) {
-		    indexPtr->byteIndex = 0;
+		if (indexPtr->byteIndex == 0) {
 		    goto done;
 		}
 		segPtr = TkTextIndexToSeg(indexPtr, &offset);

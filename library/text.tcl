@@ -85,7 +85,16 @@ bind Text <ButtonRelease-1> {
 }
 bind Text <Control-1> {
     %W mark set insert @%x,%y
+    # An operation that moves the insert mark without making it
+    # one end of the selection must insert an autoseparator
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
+# stop an accidental double click triggering <Double-Button-1>
+bind Text <Double-Control-1> { # nothing }
+# stop an accidental movement triggering <B1-Motion>
+bind Text <Control-B1-Motion> { # nothing }
 bind Text <<PrevChar>> {
     tk::TextSetCursor %W insert-1displayindices
 }
@@ -245,6 +254,11 @@ bind Text <<SelectAll>> {
 }
 bind Text <<SelectNone>> {
     %W tag remove sel 1.0 end
+    # An operation that clears the selection must insert an autoseparator,
+    # because the selection operation may have moved the insert mark
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
 bind Text <<Cut>> {
     tk_textCut %W
@@ -256,7 +270,15 @@ bind Text <<Paste>> {
     tk_textPaste %W
 }
 bind Text <<Clear>> {
+    # Make <<Clear>> an atomic operation on the Undo stack,
+    # i.e. separate it from other delete operations on either side
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
     catch {%W delete sel.first sel.last}
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
 bind Text <<PasteSelection>> {
     if {$tk_strictMotif || ![info exists tk::Priv(mouseMoved)]
@@ -314,7 +336,16 @@ bind Text <Control-t> {
 }
 
 bind Text <<Undo>> {
+    # An Undo operation may remove the separator at the top of the Undo stack.
+    # Then the item at the top of the stack gets merged with the subsequent changes.
+    # Place separators before and after Undo to prevent this.
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
     catch { %W edit undo }
+    if {[%W cget -autoseparators]} {
+	%W edit separator
+    }
 }
 
 bind Text <<Redo>> {
@@ -543,7 +574,6 @@ proc ::tk::TextAnchor {w} {
 }
 
 proc ::tk::TextSelectTo {w x y {extend 0}} {
-    global tcl_platform
     variable ::tk::Priv
 
     set anchorname [tk::TextAnchor $w]
@@ -1022,9 +1052,18 @@ proc ::tk_textCopy w {
 
 proc ::tk_textCut w {
     if {![catch {set data [$w get sel.first sel.last]}]} {
+        # make <<Cut>> an atomic operation on the Undo stack,
+        # i.e. separate it from other delete operations on either side
+	set oldSeparator [$w cget -autoseparators]
+	if {$oldSeparator} {
+	    $w edit separator
+	}
 	clipboard clear -displayof $w
 	clipboard append -displayof $w $data
 	$w delete sel.first sel.last
+	if {$oldSeparator} {
+	    $w edit separator
+	}
     }
 }
 
@@ -1036,7 +1075,6 @@ proc ::tk_textCut w {
 # w -		Name of a text widget.
 
 proc ::tk_textPaste w {
-    global tcl_platform
     if {![catch {::tk::GetSelection $w CLIPBOARD} sel]} {
 	set oldSeparator [$w cget -autoseparators]
 	if {$oldSeparator} {
@@ -1163,4 +1201,100 @@ proc ::tk::TextScanDrag {w x y} {
     if {[info exists Priv(mouseMoved)] && $Priv(mouseMoved)} {
 	$w scan dragto $x $y
     }
+}
+
+# ::tk::TextUndoRedoProcessMarks --
+#
+# This proc is executed after an undo or redo action.
+# It processes the list of undo/redo marks temporarily set in the
+# text widget to positions delimiting where changes happened, and
+# returns a flat list of ranges. The temporary marks are removed
+# from the text widget.
+#
+# Arguments:
+# w -	The text widget
+
+proc ::tk::TextUndoRedoProcessMarks {w} {
+    set indices {}
+    set undoMarks {}
+
+    # only consider the temporary marks set by an undo/redo action
+    foreach mark [$w mark names] {
+        if {[string range $mark 0 11] eq "tk::undoMark"} {
+            lappend undoMarks $mark
+        }
+    }
+
+    # transform marks into indices
+    # the number of undo/redo marks is always even, each right mark
+    # completes a left mark to give a range
+    # this is true because:
+    #   - undo/redo only deals with insertions and deletions of text
+    #   - insertions may move marks but not delete them
+    #   - when deleting text, marks located inside the deleted range
+    #     are not erased but moved to the start of the deletion range
+    #         . this is done in TkBTreeDeleteIndexRange ("This segment
+    #           refuses to die...")
+    #         . because MarkDeleteProc does nothing else than returning
+    #           a value indicating that marks are not deleted by this
+    #           deleteProc
+    #         . mark deletion rather happen through [.text mark unset xxx]
+    #           which was not used _up to this point of the code_ (it
+    #           is a bit later just before exiting the present proc)
+    set nUndoMarks [llength $undoMarks]
+    set n [expr {$nUndoMarks / 2}]
+    set undoMarks [lsort -dictionary $undoMarks]
+    set Lmarks [lrange $undoMarks 0 [expr {$n - 1}]]
+    set Rmarks [lrange $undoMarks $n [llength $undoMarks]]
+    foreach Lmark $Lmarks Rmark $Rmarks {
+        lappend indices [$w index $Lmark] [$w index $Rmark]
+        $w mark unset $Lmark $Rmark
+    }
+
+    # process ranges to:
+    #   - remove those already fully included in another range
+    #   - merge overlapping ranges
+    set ind [lsort -dictionary -stride 2 $indices]
+    set indices {}
+
+    for {set i 0} {$i < $nUndoMarks} {incr i 2} {
+        set il1 [lindex $ind $i]
+        set ir1 [lindex $ind [expr {$i + 1}]]
+        lappend indices $il1 $ir1
+
+        for {set j [expr {$i + 2}]} {$j < $nUndoMarks} {incr j 2} {
+            set il2 [lindex $ind $j]
+            set ir2 [lindex $ind [expr {$j + 1}]]
+
+            if {[$w compare $il2 > $ir1]} {
+                # second range starts after the end of first range
+                # -> further second ranges do not need to be considered
+                #    because ranges were sorted by increasing first index
+                set j $nUndoMarks
+
+            } else {
+                if {[$w compare $ir2 > $ir1]} {
+                    # second range overlaps first range
+                    # -> merge them into a single range
+                    set indices [lreplace $indices end-1 end]
+                    lappend indices $il1 $ir2
+
+                } else {
+                    # second range is fully included in first range
+                    # -> ignore it
+
+                }
+                # in both cases above, the second range shall be
+                # trimmed out from the list of ranges
+                set ind [lreplace $ind $j [expr {$j + 1}]]
+                incr j -2
+                incr nUndoMarks -2
+
+            }
+
+        }
+
+    }
+
+    return $indices
 }

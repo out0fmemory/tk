@@ -142,7 +142,7 @@ TkpOpenDisplay(
     static NSRect maxBounds = {{0, 0}, {0, 0}};
     static char vendor[25] = "";
     NSArray *cgVers;
-    NSAutoreleasePool *pool;
+    NSAutoreleasePool *pool = [NSAutoreleasePool new];
 
     if (gMacDisplay != NULL) {
 	if (strcmp(gMacDisplay->display->display_name, display_name) == 0) {
@@ -166,7 +166,6 @@ TkpOpenDisplay(
     display->default_screen = 0;
     display->display_name   = (char *) macScreenName;
 
-    pool = [NSAutoreleasePool new];
     cgVers = [[[NSBundle bundleWithIdentifier:@"com.apple.CoreGraphics"]
 	    objectForInfoDictionaryKey:@"CFBundleShortVersionString"]
 	    componentsSeparatedByString:@"."];
@@ -177,12 +176,25 @@ TkpOpenDisplay(
 	display->proto_minor_version = [[cgVers objectAtIndex:2] integerValue];
     }
     if (!vendor[0]) {
-	snprintf(vendor, sizeof(vendor), "Apple AppKit %s %g",
-		([NSGarbageCollector defaultCollector] ? "GC" : "RR"),
+	snprintf(vendor, sizeof(vendor), "Apple AppKit %g",
 		NSAppKitVersionNumber);
     }
     display->vendor = vendor;
-    Gestalt(gestaltSystemVersion, (SInt32 *) &display->release);
+    {
+	int major, minor, patch;
+
+#if MAC_OS_X_VERSION_MIN_REQUIRED < 10100
+	Gestalt(gestaltSystemVersionMajor, (SInt32*)&major);
+	Gestalt(gestaltSystemVersionMinor, (SInt32*)&minor);
+	Gestalt(gestaltSystemVersionBugFix, (SInt32*)&patch);
+#else
+	NSOperatingSystemVersion systemVersion = [[NSProcessInfo processInfo] operatingSystemVersion];
+	major = systemVersion.majorVersion;
+	minor = systemVersion.minorVersion;
+	patch = systemVersion.patchVersion;
+#endif
+	display->release = major << 16 | minor << 8 | patch;
+    }
 
     /*
      * These screen bits never change
@@ -669,14 +681,6 @@ XForceScreenSaver(
     display->request++;
 }
 
-void
-Tk_FreeXId(
-    Display *display,
-    XID xid)
-{
-    /* no-op function needed for stubs implementation. */
-}
-
 int
 XSync(
     Display *display,
@@ -793,6 +797,10 @@ XCreateImage(
     ximage->format = format;
     ximage->data = data;
     ximage->obdata = NULL;
+    /* The default pixelpower is 0.  This must be explicitly set to 1 in the
+     * case of an XImage extracted from a Retina display.
+     */
+    ximage->pixelpower = 0;
 
     if (format == ZPixmap) {
 	ximage->bits_per_pixel = 32;
@@ -844,7 +852,8 @@ XCreateImage(
  * Results:
  *	Returns a newly allocated XImage containing the data from the given
  *	rectangle of the given drawable, or NULL if the XImage could not be
- *     constructed.
+ *	constructed.  NOTE: If we are copying from a window on a Retina
+ *	display, the dimensions of the XImage will be 2*width x 2*height.
  *
  * Side effects:
  *	None.
@@ -864,6 +873,7 @@ XGetImage(
     int format)
 {
     NSBitmapImageRep *bitmap_rep;
+    NSUInteger         bitmap_fmt;
     XImage *       imagePtr = NULL;
     char *           bitmap = NULL;
     char *           image_data=NULL;
@@ -872,7 +882,19 @@ XGetImage(
     int	        bitmap_pad = 0;
     int	        bytes_per_row = 4*width;
     int                size;
-    TkMacOSXDbgMsg("XGetImage");
+    MacDrawable *macDraw = (MacDrawable *) d;
+    NSWindow *win = TkMacOSXDrawableWindow(d);
+    /* This code assumes that backing scale factors are integers.  Currently
+     * Retina displays use a scale factor of 2.0 and normal displays use 1.0.
+     * We do not support any other values here.
+     */
+    int scalefactor = 1;
+    if (win && [win respondsToSelector:@selector(backingScaleFactor)]) {
+	scalefactor = ([win backingScaleFactor] == 2.0) ? 2 : 1;
+    }
+    int scaled_height = height * scalefactor;
+    int scaled_width = width * scalefactor;
+
     if (format == ZPixmap) {
 	if (width == 0 || height == 0) {
 	    /* This happens all the time.
@@ -881,10 +903,11 @@ XGetImage(
 	    return NULL;
 	}
 
-	bitmap_rep =  BitmapRepFromDrawableRect(d, x, y,width, height);
+	bitmap_rep =  BitmapRepFromDrawableRect(d, x, y, width, height);
+	bitmap_fmt = [bitmap_rep bitmapFormat];
 
 	if ( bitmap_rep == Nil                        ||
-	     [bitmap_rep bitmapFormat] != 0    ||
+	     (bitmap_fmt != 0 && bitmap_fmt != 1)     ||
 	     [bitmap_rep samplesPerPixel] != 4 ||
 	     [bitmap_rep isPlanar] != 0               ) {
 	    TkMacOSXDbgMsg("XGetImage: Failed to construct NSBitmapRep");
@@ -895,33 +918,51 @@ XGetImage(
 	NSImage* ns_image = [[NSImage alloc]initWithSize:image_size];
 	[ns_image addRepresentation:bitmap_rep];
 
-	/* Assume premultiplied nonplanar data with 4 bytes per pixel and alpha last.*/
-	if ( [bitmap_rep bitmapFormat] == 0 &&
-	     [bitmap_rep isPlanar ] == 0 &&
+	/* Assume premultiplied nonplanar data with 4 bytes per pixel.*/
+	if ( [bitmap_rep isPlanar ] == 0 &&
 	     [bitmap_rep samplesPerPixel] == 4 ) {
 	    bytes_per_row = [bitmap_rep bytesPerRow];
-	    size = bytes_per_row*height;
+	    assert(bytes_per_row == 4 * scaled_width);
+	    assert([bitmap_rep bytesPerPlane] == bytes_per_row * scaled_height);
+	    size = bytes_per_row*scaled_height;
 	    image_data = (char*)[bitmap_rep bitmapData];
 	    if ( image_data ) {
 		int row, n, m;
 		bitmap = ckalloc(size);
 		/*
 		  Oddly enough, the bitmap has the top row at the beginning,
-		  and the pixels are in BGRA format.
+		  and the pixels are in BGRA or ABGR format.
 		*/
-		for (row=0, n=0; row<height; row++, n+=bytes_per_row) {
-		    for (m=n; m<n+bytes_per_row; m+=4) {
-			*(bitmap+m)     = *(image_data+m+2);
-			*(bitmap+m+1) = *(image_data+m+1);
-			*(bitmap+m+2) = *(image_data+m);
-			*(bitmap+m+3) = *(image_data+m+3);
+		if (bitmap_fmt == 0) {
+		    /* BGRA */
+		    for (row=0, n=0; row<scaled_height; row++, n+=bytes_per_row) {
+			for (m=n; m<n+bytes_per_row; m+=4) {
+			    *(bitmap+m)   = *(image_data+m+2);
+			    *(bitmap+m+1) = *(image_data+m+1);
+			    *(bitmap+m+2) = *(image_data+m);
+			    *(bitmap+m+3) = *(image_data+m+3);
+			}
+		    }
+		} else {
+		    /* ABGR */
+		    for (row=0, n=0; row<scaled_height; row++, n+=bytes_per_row) {
+			for (m=n; m<n+bytes_per_row; m+=4) {
+			    *(bitmap+m)   = *(image_data+m+3);
+			    *(bitmap+m+1) = *(image_data+m+2);
+			    *(bitmap+m+2) = *(image_data+m+1);
+			    *(bitmap+m+3) = *(image_data+m);
+			}
 		    }
 		}
 	    }
 	}
 	if (bitmap) {
 	    imagePtr = XCreateImage(display, NULL, depth, format, offset,
-				    (char*)bitmap, width, height, bitmap_pad, bytes_per_row);
+				    (char*)bitmap, scaled_width, scaled_height,
+				    bitmap_pad, bytes_per_row);
+	    if (scalefactor == 2) {
+	    	imagePtr->pixelpower = 1;
+	     }
 	    [ns_image removeRepresentation:bitmap_rep]; /*releases the rep*/
 	    [ns_image release];
 	}
